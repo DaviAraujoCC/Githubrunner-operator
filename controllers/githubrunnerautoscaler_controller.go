@@ -142,10 +142,10 @@ func (r *GithubRunnerAutoscalerReconciler) autoscaleReplicas(ctx context.Context
 		case *deploy.Spec.Replicas < githubrunner.Spec.MinWorkers:
 			deploy.Spec.Replicas = &githubrunner.Spec.MinWorkers
 		case midIdle < 0.4 && *deploy.Spec.Replicas > githubrunner.Spec.MinWorkers:
-			replicas := *deploy.Spec.Replicas + int32(1)
+			replicas := *deploy.Spec.Replicas - int32(1)
 			deploy.Spec.Replicas = &replicas
 		case midIdle > 0.8:
-			replicas := *deploy.Spec.Replicas - int32(1)
+			replicas := *deploy.Spec.Replicas + int32(1)
 			deploy.Spec.Replicas = &replicas
 		}
 
