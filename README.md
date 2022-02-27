@@ -1,0 +1,96 @@
+# Github runner autoscale operator
+
+## What is it?
+
+TL; DR
+
+**The main purpose of this project is to create a simple autoscale for self-hosted github runners.**
+
+When we began to use self hosted runners the main problem was how to increase the number of runners when the developers are using the runners at the same time. This operator do this by creating a new replica of the runner when the percentage of idle runners is less than 40% and deleting the replica when the percentage of idle runners is more than 80%.
+
+This project is a fork from https://github.com/hurbcom/github-runner-autoscale
+
+## Instalation
+
+We will use our another project with the self host image of github runner in docker (https://github.com/hurbcom/github-runner-image)
+
+To begin the installattion we need to create the image from the operator and push to a repository:
+
+```
+$ make docker-build docker-push IMG=<some-registry>/<project-name>:tag
+```
+
+After that you can deploy the operator in your cluster with the following command:
+
+```
+$ make deploy IMG=<some-registry>/<project-name>:tag
+```
+
+It will create the service account necessary to run the operator with the rest o CRD's and deployment.
+
+For default the operator will be deployed in the `githubrunner-operator-system` namespace, but you can change it modifying the `namespace` parameter in <b>config/default/kustomization.yaml</b> file.
+
+```
+$ kubectl get deploy -n  githubrunner-operator-system
+NAME                                                       READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/githubrunner-operator-controller-manager   1/1     1            1           34m
+```
+
+Create the object GithubRunnerAutoscaler to configure the operator:
+
+```
+apiVersion: operator.hurb.com/v1alpha1
+kind: GithubRunnerAutoscaler
+metadata:
+  name: githubrunnerautoscaler-example // name of the object
+spec:
+  deploymentName: runner      // name of the deployment that runs the github runner
+  minWorkers:  1             // minimum number of workers
+  maxWorkers:  10            // maximum number of workers
+  namespace: default         // namespace where the operator is deployed
+  orgName: orgname           // name of the github organization
+  githubToken: token         // token to access github
+    secretName: github-token  // name of the secret with the token
+    keyRef: token             // key of the token
+```
+Example of secret object:
+
+```
+apiVersion: v1
+stringData:
+  token: {{ TOKEN }}
+kind: Secret
+metadata:
+  name: github-token
+```
+
+Accessing logs from the controller:
+
+```
+$ kubectl logs -f githubrunner-operator-controller-manager-555c7d69b7-5fd7n -n githubrunner-operator-system
+1.6459928032664642e+09  INFO    controller-runtime.metrics      Metrics server is starting to listen    {"addr": "127.0.0.1:8080"}
+1.645992803266782e+09   INFO    setup   starting manager
+1.6459928032672417e+09  INFO    Starting server {"path": "/metrics", "kind": "metrics", "addr": "127.0.0.1:8080"}
+1.6459928032672265e+09  INFO    Starting server {"kind": "health probe", "addr": "[::]:8081"}
+I0227 20:13:23.267223       1 leaderelection.go:248] attempting to acquire leader lease githubrunner-operator-system/a8113487.hurb.com...
+I0227 20:13:23.276073       1 leaderelection.go:258] successfully acquired lease githubrunner-operator-system/a8113487.hurb.com
+1.645992803276169e+09   DEBUG   events  Normal  {"object": {"kind":"ConfigMap","namespace":"githubrunner-operator-system","name":"a8113487.hurb.com","uid":"8a374c83-f121-4068-a512-39e82c055598","apiVersion":"v1","resourceVersion":"46130"}, "reason": "LeaderElection", "message": "githubrunner-operator-controller-manager-555c7d69b7-5fd7n_3e40d181-7196-40c9-a486-20ed6502ee3f became leader"}
+1.645992803276285e+09   DEBUG   events  Normal  {"object": {"kind":"Lease","namespace":"githubrunner-operator-system","name":"a8113487.hurb.com","uid":"96c02734-8444-40b5-8f96-c8d445a0c5d1","apiVersion":"coordination.k8s.io/v1","resourceVersion":"46131"}, "reason": "LeaderElection", "message": "githubrunner-operator-controller-manager-555c7d69b7-5fd7n_3e40d181-7196-40c9-a486-20ed6502ee3f became leader"}
+1.6459928032764196e+09  INFO    controller.githubrunnerautoscaler       Starting EventSource    {"reconciler group": "operator.hurb.com", "reconciler kind": "GithubRunnerAutoscaler", "source": "kind source: *v1alpha1.GithubRunnerAutoscaler"}
+1.6459928032764473e+09  INFO    controller.githubrunnerautoscaler       Starting Controller     {"reconciler group": "operator.hurb.com", "reconciler kind": "GithubRunnerAutoscaler"}
+1.6459928033776991e+09  INFO    controller.githubrunnerautoscaler       Starting workers        {"reconciler group": "operator.hurb.com", "reconciler kind": "GithubRunnerAutoscaler", "worker count": 1}
+1.645992849615808e+09   INFO    controller.githubrunnerautoscaler       Created GithubRunnerAutoscaler for      {"reconciler group": "operator.hurb.com", "reconciler kind": "GithubRunnerAutoscaler", "name": "githubrunnerautoscaler-test", "namespace": "default", "GithubRunnerAutoscaler.Namespace": "default", "GithubRunnerAutoscaler.Name": "githubrunnerautoscaler-test"}
+1.6459928499302084e+09  INFO    controller.githubrunnerautoscaler       Total runners: 0, busy runners: 0, idle runners: 0, percent idle: NaN   {"reconciler group": "operator.hurb.com", "reconciler kind": "GithubRunnerAutoscaler", "name": "githubrunnerautoscaler-test", "namespace": "default"}
+1.6459928499304285e+09  INFO    controller.githubrunnerautoscaler       Changing replicas from 2 to 5   {"reconciler group": "operator.hurb.com", "reconciler kind": "GithubRunnerAutoscaler", "name": "githubrunnerautoscaler-test", "namespace": "default"}
+1.6459928651497526e+09  INFO    controller.githubrunnerautoscaler       Total runners: 0, busy runners: 0, idle runners: 0, percent idle: NaN   {"reconciler group": "operator.hurb.com", "reconciler kind": "GithubRunnerAutoscaler", "name": "githubrunnerautoscaler-test", "namespace": "default"}
+
+1.6459928803479133e+09  INFO    controller.githubrunnerautoscaler       Total runners: 0, busy runners: 0, idle runners: 0, percent idle: NaN   {"reconciler group": "operator.hurb.com", "reconciler kind": "GithubRunnerAutoscaler", "name": "githubrunnerautoscaler-test", "namespace": "default"}
+```
+
+## In development :construction::construction_worker:
+TODO list:
+
+* Make possible to configure the operator to monitor multiple runners at same time with channels.
+* Code cleanup.
+* Create strategies and algorithms to scale up and down.
+

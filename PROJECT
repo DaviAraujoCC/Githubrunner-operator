@@ -1,7 +1,7 @@
 domain: hurb.com
 layout:
 - go.kubebuilder.io/v3
-projectName: test-kubebuilder
+projectName: githubrunner-operator
 repo: github.com/DaviAraujoCC/k8s-operator-kubebuilder
 resources:
 - api:
