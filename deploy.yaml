@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: runner
+  name: runner
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: runner
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: runner
+    spec:
+      containers:
+      - image: busybox
+        name: busybox
+        command: ["/bin/sh","-c","while true; do sleep 10; done"]

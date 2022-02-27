@@ -28,7 +28,7 @@ type GithubRunnerAutoscalerSpec struct {
 	DeploymentName string           `json:"deploymentName"`
 	Namespace      string           `json:"namespace"`
 	OrgName        string           `json:"orgName"`
-	MinWorkers     int32            `json:"minRunners"`
+	MinWorkers     int32            `json:"minWorkers"`
 	GithubToken    *GithubTokenSpec `json:"githubToken"`
 }
 
@@ -39,12 +39,13 @@ type GithubTokenSpec struct {
 
 // GithubRunnerAutoscalerStatus defines the observed state of GithubRunnerAutoscaler
 type GithubRunnerAutoscalerStatus struct {
+	LastUpdateTime metav1.Time `json:"lastUpdateTime"`
 }
 
 //+kubebuilder:object:root=true
-//+kubebuilder:subresource:status
 
-// GithubRunnerAutoscaler is the Schema for the githubrunnerautoscalers API
+// GithubRunnerAutoscaler is the Schema for the githubrunnerautoscalers API]
+//+kubebuilder:subresource:status
 type GithubRunnerAutoscaler struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

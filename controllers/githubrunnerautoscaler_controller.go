@@ -27,6 +27,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -45,6 +46,8 @@ type GithubRunnerAutoscalerReconciler struct {
 var (
 	token   []byte
 	orgname string
+	cctx    context.Context
+	cancel  context.CancelFunc
 )
 
 //+kubebuilder:rbac:groups=operator.hurb.com,resources=githubrunnerautoscalers,verbs=get;list;watch;create;update;patch;delete
@@ -61,7 +64,7 @@ func (r *GithubRunnerAutoscalerReconciler) Reconcile(ctx context.Context, req ct
 	err := r.Get(ctx, req.NamespacedName, githubrunner)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			log.Info("Unable to found GithubRunnerAutoscaler object")
+			log.Info("Unable to find GithubRunnerAutoscaler object")
 			return ctrl.Result{}, nil
 		}
 		log.Error(err, "Unable to read GithubRunnerAutoscaler")
@@ -73,7 +76,7 @@ func (r *GithubRunnerAutoscalerReconciler) Reconcile(ctx context.Context, req ct
 	err = r.Get(ctx, client.ObjectKey{Name: githubrunner.Spec.DeploymentName, Namespace: githubrunner.Spec.Namespace}, deployment)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			log.Error(err, "Unable to found Deployment object")
+			log.Info("Unable to found Deployment object")
 			return ctrl.Result{}, err
 		}
 		log.Error(err, "Unable to read Deployment name")
@@ -88,19 +91,36 @@ func (r *GithubRunnerAutoscalerReconciler) Reconcile(ctx context.Context, req ct
 
 	orgname = githubrunner.Spec.OrgName
 
-	r.autoscaleReplicas(ctx, deployment, githubrunner)
+	t1 := time.Now()
+	t2 := githubrunner.Status.LastUpdateTime
+	diffUpdate := t2.Sub(t1)
+
+	if diffUpdate < time.Second*30 && cctx != nil {
+		log.Info("Recreating goroutine")
+		cancel()
+		cctx, cancel = context.WithCancel(context.Background())
+	} else {
+		cctx, cancel = context.WithCancel(context.Background())
+	}
+
+	log.Info("Created GithubRunnerAutoscaler for ", "GithubRunnerAutoscaler.Namespace", githubrunner.Namespace, "GithubRunnerAutoscaler.Name", githubrunner.Name)
+
+	go r.autoscaleReplicas(ctx, cctx, deployment, githubrunner)
+
+	githubrunner.Status.LastUpdateTime = metav1.Time{Time: time.Now()}
+	r.Update(ctx, githubrunner)
 
 	return ctrl.Result{}, nil
 }
 
-func (r *GithubRunnerAutoscalerReconciler) autoscaleReplicas(ctx context.Context, deploy *appsv1.Deployment, githubrunner *operatorv1alpha1.GithubRunnerAutoscaler) {
+func (r *GithubRunnerAutoscalerReconciler) autoscaleReplicas(ctx context.Context, cctx context.Context, deploy *appsv1.Deployment, githubrunner *operatorv1alpha1.GithubRunnerAutoscaler) {
 	log := log.FromContext(ctx)
 	midIdle := 0.5
-	//var count int
 	for {
 		data, err := requestGithubInfo(githubrunner)
 		if err != nil {
 			log.Error(err, "Unable to request github info")
+			break
 		}
 
 		totalRunners := data.TotalCount
@@ -136,7 +156,13 @@ func (r *GithubRunnerAutoscalerReconciler) autoscaleReplicas(ctx context.Context
 				log.Error(err, "Unable to update Deployment")
 			}
 		}
-		time.Sleep(time.Second * 5)
+		select {
+		case <-cctx.Done():
+			return
+		default:
+			time.Sleep(5 * time.Second)
+			continue
+		}
 	}
 }
 
@@ -149,7 +175,7 @@ func requestGithubInfo(githubrunner *operatorv1alpha1.GithubRunnerAutoscaler) (g
 	req.Header.Add("Authorization", fmt.Sprintf("token %s", string(token)))
 	req.Header.Add("Accept", "application/vnd.github.v3+json")
 
-	client := &http.Client{}
+	client := &http.Client{Timeout: time.Second * 10}
 	resp, err := client.Do(req)
 	if err != nil {
 		return githubtype.PayloadRunners{}, err

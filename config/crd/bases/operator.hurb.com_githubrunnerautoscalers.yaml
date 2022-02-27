@@ -19,7 +19,7 @@ spec:
     schema:
       openAPIV3Schema:
         description: GithubRunnerAutoscaler is the Schema for the githubrunnerautoscalers
-          API
+          API]
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -48,7 +48,7 @@ spec:
                 - keyRef
                 - secretName
                 type: object
-              minRunners:
+              minWorkers:
                 format: int32
                 type: integer
               namespace:
@@ -58,13 +58,19 @@ spec:
             required:
             - deploymentName
             - githubToken
-            - minRunners
+            - minWorkers
             - namespace
             - orgName
             type: object
           status:
             description: GithubRunnerAutoscalerStatus defines the observed state of
               GithubRunnerAutoscaler
+            properties:
+              lastUpdateTime:
+                format: date-time
+                type: string
+            required:
+            - lastUpdateTime
             type: object
         type: object
     served: true

@@ -1,6 +1,14 @@
 apiVersion: operator.hurb.com/v1alpha1
 kind: GithubRunnerAutoscaler
 metadata:
-  name: githubrunnerautoscaler-sample
+  name: githubrunnerautoscaler-test
 spec:
-  # TODO(user): Add fields here
+  deploymentName: runner
+  minWorkers: 7
+  namespace: default
+  orgName: david
+  githubToken:
+    secretName: github-token
+    keyRef: token
+
+
