@@ -29,6 +29,7 @@ type GithubRunnerAutoscalerSpec struct {
 	Namespace      string           `json:"namespace"`
 	OrgName        string           `json:"orgName"`
 	MinWorkers     int32            `json:"minWorkers"`
+	MaxWorkers     int32            `json:"maxWorkers"`
 	GithubToken    *GithubTokenSpec `json:"githubToken"`
 }
 

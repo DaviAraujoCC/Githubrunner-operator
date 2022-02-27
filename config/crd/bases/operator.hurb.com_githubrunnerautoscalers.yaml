@@ -48,6 +48,9 @@ spec:
                 - keyRef
                 - secretName
                 type: object
+              maxWorkers:
+                format: int32
+                type: integer
               minWorkers:
                 format: int32
                 type: integer
@@ -58,6 +61,7 @@ spec:
             required:
             - deploymentName
             - githubToken
+            - maxWorkers
             - minWorkers
             - namespace
             - orgName

@@ -64,6 +64,9 @@ func (r *GithubRunnerAutoscalerReconciler) Reconcile(ctx context.Context, req ct
 	if err != nil {
 		if errors.IsNotFound(err) {
 			log.Info("Unable to find GithubRunnerAutoscaler object")
+			if cctx != nil {
+				cancel()
+			}
 			return ctrl.Result{}, nil
 		}
 		log.Error(err, "Unable to read GithubRunnerAutoscaler")
@@ -82,7 +85,7 @@ func (r *GithubRunnerAutoscalerReconciler) Reconcile(ctx context.Context, req ct
 		return ctrl.Result{}, err
 	}
 
-	token, err = r.decodeToken(ctx, githubrunner)
+	token, err = r.getToken(githubrunner)
 	if err != nil {
 		log.Error(err, "Unable to decode token")
 		return ctrl.Result{}, err
@@ -90,11 +93,7 @@ func (r *GithubRunnerAutoscalerReconciler) Reconcile(ctx context.Context, req ct
 
 	orgname = githubrunner.Spec.OrgName
 
-	t1 := time.Now()
-	t2 := githubrunner.Status.LastUpdateTime
-	diffUpdate := t2.Sub(t1)
-
-	if diffUpdate < time.Second*30 && cctx != nil {
+	if cctx != nil {
 		log.Info("Recreating goroutine")
 		cancel()
 		cctx, cancel = context.WithCancel(context.Background())
@@ -118,7 +117,7 @@ func (r *GithubRunnerAutoscalerReconciler) autoscaleReplicas(ctx context.Context
 	for {
 		data, err := requestGithubInfo(githubrunner)
 		if err != nil {
-			log.Error(err, "Unable to request github info")
+			log.Error(err, "Unable to request github info, shutting down...")
 			break
 		}
 
@@ -140,10 +139,10 @@ func (r *GithubRunnerAutoscalerReconciler) autoscaleReplicas(ctx context.Context
 		switch {
 		case *deploy.Spec.Replicas <= githubrunner.Spec.MinWorkers:
 			deploy.Spec.Replicas = &githubrunner.Spec.MinWorkers
-		case midIdle < 0.4 && *deploy.Spec.Replicas > githubrunner.Spec.MinWorkers:
+		case midIdle < 0.4 && *deploy.Spec.Replicas < githubrunner.Spec.MaxWorkers:
 			replicas := *deploy.Spec.Replicas + int32(1)
 			deploy.Spec.Replicas = &replicas
-		case midIdle > 0.8:
+		case midIdle > 0.8 && *deploy.Spec.Replicas > githubrunner.Spec.MinWorkers:
 			replicas := *deploy.Spec.Replicas - int32(1)
 			deploy.Spec.Replicas = &replicas
 		}
@@ -159,7 +158,7 @@ func (r *GithubRunnerAutoscalerReconciler) autoscaleReplicas(ctx context.Context
 		case <-cctx.Done():
 			return
 		default:
-			time.Sleep(5 * time.Second)
+			time.Sleep(15 * time.Second)
 			continue
 		}
 	}
@@ -186,9 +185,9 @@ func requestGithubInfo(githubrunner *operatorv1alpha1.GithubRunnerAutoscaler) (g
 	return data, nil
 }
 
-func (r *GithubRunnerAutoscalerReconciler) decodeToken(ctx context.Context, githubrunner *operatorv1alpha1.GithubRunnerAutoscaler) ([]byte, error) {
+func (r *GithubRunnerAutoscalerReconciler) getToken(githubrunner *operatorv1alpha1.GithubRunnerAutoscaler) ([]byte, error) {
 	secret := &corev1.Secret{}
-	err := r.Get(ctx, client.ObjectKey{Name: githubrunner.Spec.GithubToken.SecretName, Namespace: githubrunner.Spec.Namespace}, secret)
+	err := r.Get(context.Background(), client.ObjectKey{Name: githubrunner.Spec.GithubToken.SecretName, Namespace: githubrunner.Spec.Namespace}, secret)
 	if err != nil && errors.IsNotFound(err) {
 		return nil, err
 	}
