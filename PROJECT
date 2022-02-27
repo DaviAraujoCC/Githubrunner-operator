@@ -1,0 +1,16 @@
+domain: hurb.com
+layout:
+- go.kubebuilder.io/v3
+projectName: test-kubebuilder
+repo: github.com/DaviAraujoCC/k8s-operator-kubebuilder
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: hurb.com
+  group: operator
+  kind: GithubRunnerAutoscaler
+  path: github.com/DaviAraujoCC/k8s-operator-kubebuilder/api/v1alpha1
+  version: v1alpha1
+version: "3"

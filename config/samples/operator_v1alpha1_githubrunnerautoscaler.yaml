@@ -1,0 +1,6 @@
+apiVersion: operator.hurb.com/v1alpha1
+kind: GithubRunnerAutoscaler
+metadata:
+  name: githubrunnerautoscaler-sample
+spec:
+  # TODO(user): Add fields here
