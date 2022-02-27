@@ -39,6 +39,7 @@ deployment.apps/githubrunner-operator-controller-manager   1/1     1            
 Create the object GithubRunnerAutoscaler to configure the operator:
 
 ```
+$ cat << EOF > githubrunnerautoscaler-example.yaml
 apiVersion: operator.hurb.com/v1alpha1
 kind: GithubRunnerAutoscaler
 metadata:
@@ -52,16 +53,25 @@ spec:
   githubToken: token         // token to access github
     secretName: github-token  // name of the secret with the token
     keyRef: token             // key of the token
+EOF
 ```
 Example of secret object:
 
 ```
+$ cat << EOF > secret.yaml 
 apiVersion: v1
 stringData:
   token: {{ TOKEN }}
 kind: Secret
 metadata:
   name: github-token
+EOF
+```
+
+To create the objects:
+```
+$ kubectl create -f githubrunnerautoscaler-example.yaml
+$ kubectl create -f secret.yaml
 ```
 
 Accessing logs from the controller:
@@ -90,7 +100,14 @@ I0227 20:13:23.276073       1 leaderelection.go:258] successfully acquired lease
 ## In development :construction::construction_worker:
 TODO list:
 
-* Make possible to configure the operator to monitor multiple runners at same time with channels.
+* Make possible to configure the operator to monitor multiple runners at same time with channels since this operator only supports one channel at time.
 * Code cleanup.
 * Create strategies and algorithms to scale up and down.
+
+
+## FAQ's:
+
+Q: Error: failed to solve with frontend dockerfile.v0
+A: If you are using docker desktop for mac/windows you need to deactivate the docker buildkit using the command: `$ export DOCKER_BUILDKIT=0 ; export COMPOSE_DOCKER_CLI_BUILD=0`.
+
 
