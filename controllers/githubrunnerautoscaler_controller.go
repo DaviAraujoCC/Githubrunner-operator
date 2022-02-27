@@ -53,7 +53,7 @@ var (
 //+kubebuilder:rbac:groups=operator.hurb.com,resources=githubrunnerautoscalers/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=operator.hurb.com,resources=githubrunnerautoscalers/finalizers,verbs=update
 //+kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;update;patch
-//+kubebuilder:rbac:groups=core,resources=secrets,verbs=get
+//+kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch
 
 func (r *GithubRunnerAutoscalerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
@@ -78,7 +78,7 @@ func (r *GithubRunnerAutoscalerReconciler) Reconcile(ctx context.Context, req ct
 	err = r.Get(ctx, client.ObjectKey{Name: githubrunner.Spec.DeploymentName, Namespace: githubrunner.Spec.Namespace}, deployment)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			log.Info("Unable to found Deployment object")
+			log.Info("Unable to find Deployment object")
 			return ctrl.Result{}, err
 		}
 		log.Error(err, "Unable to read Deployment name")

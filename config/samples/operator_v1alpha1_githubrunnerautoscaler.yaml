@@ -4,7 +4,8 @@ metadata:
   name: githubrunnerautoscaler-test
 spec:
   deploymentName: runner
-  minWorkers: 5
+  minWorkers: 6
+  maxWorkers: 20
   namespace: default
   orgName: orgname
   githubToken:
@@ -15,32 +16,8 @@ spec:
 
 apiVersion: v1
 stringData:
-  token: "{{.Token}}"
+  token: {{ TOKEN }}
 kind: Secret
 metadata:
   name: github-token
-
----
-
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  labels:
-    app: runner
-  name: runner
-spec:
-  replicas: 2
-  selector:
-    matchLabels:
-      app: runner
-  strategy: {}
-  template:
-    metadata:
-      labels:
-        app: runner
-    spec:
-      containers:
-      - image: busybox
-        name: busybox
-        command: ["/bin/sh","-c","while true; do sleep 10; done"]
 
