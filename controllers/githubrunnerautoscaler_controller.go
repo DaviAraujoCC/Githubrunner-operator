@@ -18,7 +18,6 @@ package controllers
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -83,7 +82,7 @@ func (r *GithubRunnerAutoscalerReconciler) Reconcile(ctx context.Context, req ct
 		return ctrl.Result{}, err
 	}
 
-	token, err = r.decodeToken(githubrunner)
+	token, err = r.decodeToken(ctx, githubrunner)
 	if err != nil {
 		log.Error(err, "Unable to decode token")
 		return ctrl.Result{}, err
@@ -139,13 +138,13 @@ func (r *GithubRunnerAutoscalerReconciler) autoscaleReplicas(ctx context.Context
 		oldReplicas := *deploy.Spec.Replicas
 
 		switch {
-		case *deploy.Spec.Replicas < githubrunner.Spec.MinWorkers:
+		case *deploy.Spec.Replicas <= githubrunner.Spec.MinWorkers:
 			deploy.Spec.Replicas = &githubrunner.Spec.MinWorkers
 		case midIdle < 0.4 && *deploy.Spec.Replicas > githubrunner.Spec.MinWorkers:
-			replicas := *deploy.Spec.Replicas - int32(1)
+			replicas := *deploy.Spec.Replicas + int32(1)
 			deploy.Spec.Replicas = &replicas
 		case midIdle > 0.8:
-			replicas := *deploy.Spec.Replicas + int32(1)
+			replicas := *deploy.Spec.Replicas - int32(1)
 			deploy.Spec.Replicas = &replicas
 		}
 
@@ -187,18 +186,15 @@ func requestGithubInfo(githubrunner *operatorv1alpha1.GithubRunnerAutoscaler) (g
 	return data, nil
 }
 
-func (r *GithubRunnerAutoscalerReconciler) decodeToken(githubrunner *operatorv1alpha1.GithubRunnerAutoscaler) ([]byte, error) {
+func (r *GithubRunnerAutoscalerReconciler) decodeToken(ctx context.Context, githubrunner *operatorv1alpha1.GithubRunnerAutoscaler) ([]byte, error) {
 	secret := &corev1.Secret{}
-	err := r.Get(context.Background(), client.ObjectKey{Name: githubrunner.Spec.GithubToken.SecretName, Namespace: githubrunner.Spec.Namespace}, secret)
+	err := r.Get(ctx, client.ObjectKey{Name: githubrunner.Spec.GithubToken.SecretName, Namespace: githubrunner.Spec.Namespace}, secret)
 	if err != nil && errors.IsNotFound(err) {
 		return nil, err
 	}
 	tokenBase := secret.Data[githubrunner.Spec.GithubToken.KeyRef]
-	data, err := base64.StdEncoding.DecodeString(string(tokenBase))
-	if err != nil {
-		return nil, err
-	}
-	return data, nil
+
+	return tokenBase, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
