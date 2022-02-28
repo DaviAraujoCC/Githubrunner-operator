@@ -105,7 +105,7 @@ func (r *GithubRunnerAutoscalerReconciler) Reconcile(ctx context.Context, req ct
 
 	log.Info("Created GithubRunnerAutoscaler for ", "GithubRunnerAutoscaler.Namespace", githubrunner.Namespace, "GithubRunnerAutoscaler.Name", githubrunner.Name)
 
-	go r.autoscaleReplicas(ctx, cctx, deployment, githubrunner)
+	go r.autoscaleReplicas(cctx, deployment, githubrunner)
 
 	githubrunner.Status.LastUpdateTime = metav1.Time{Time: time.Now()}
 	r.Update(ctx, githubrunner)
@@ -113,7 +113,8 @@ func (r *GithubRunnerAutoscalerReconciler) Reconcile(ctx context.Context, req ct
 	return ctrl.Result{}, nil
 }
 
-func (r *GithubRunnerAutoscalerReconciler) autoscaleReplicas(ctx context.Context, cctx context.Context, deploy *appsv1.Deployment, githubrunner *operatorv1alpha1.GithubRunnerAutoscaler) {
+func (r *GithubRunnerAutoscalerReconciler) autoscaleReplicas(cctx context.Context, deploy *appsv1.Deployment, githubrunner *operatorv1alpha1.GithubRunnerAutoscaler) {
+	ctx := context.Background()
 	log := log.FromContext(ctx)
 	midIdle := 0.5
 	for {
@@ -139,7 +140,7 @@ func (r *GithubRunnerAutoscalerReconciler) autoscaleReplicas(ctx context.Context
 		replicas := *deploy.Spec.Replicas
 
 		switch {
-		case *deploy.Spec.Replicas <= githubrunner.Spec.MinWorkers:
+		case *deploy.Spec.Replicas < githubrunner.Spec.MinWorkers:
 			deploy.Spec.Replicas = &githubrunner.Spec.MinWorkers
 		case midIdle <= 0.4 && *deploy.Spec.Replicas < githubrunner.Spec.MaxWorkers:
 			replicas := math.Ceil(float64(replicas) + (float64(replicas) / 2))

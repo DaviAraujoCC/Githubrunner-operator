@@ -12,7 +12,7 @@ This project was influenced from https://github.com/hurbcom/github-runner-autosc
 
 ## Requeriments
 
-* Go 1.17
+* Go 1.17+
 * Make
 * Docker
 
@@ -78,6 +78,7 @@ $ kubectl create -f githubrunnerautoscaler-example.yaml
 $ kubectl create -f secret.yaml
 ```
 
+Verify the objects:
 ```
 $ kubectl get githubrunnerautoscaler, secret
 NAME                                                                   AGE
