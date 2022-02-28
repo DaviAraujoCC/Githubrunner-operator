@@ -137,11 +137,11 @@ func (r *GithubRunnerAutoscalerReconciler) autoscaleReplicas(cctx context.Contex
 		log.Info(fmt.Sprintf("Total runners: %d, busy runners: %d, idle runners: %d, percent idle: %f", totalRunners, qntRunnersBusy, idleRunners, percentIdle))
 		midIdle = (midIdle + percentIdle) / 2
 
-		replicas := *deploy.Spec.Replicas
-
-		if replicas < githubrunner.Spec.MinWorkers {
+		if *deploy.Spec.Replicas < githubrunner.Spec.MinWorkers {
 			deploy.Spec.Replicas = &githubrunner.Spec.MinWorkers
 		}
+
+		replicas := *deploy.Spec.Replicas
 
 		switch {
 		case midIdle <= 0.4 && *deploy.Spec.Replicas < githubrunner.Spec.MaxWorkers:
