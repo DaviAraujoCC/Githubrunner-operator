@@ -69,12 +69,6 @@ spec:
           status:
             description: GithubRunnerAutoscalerStatus defines the observed state of
               GithubRunnerAutoscaler
-            properties:
-              lastUpdateTime:
-                format: date-time
-                type: string
-            required:
-            - lastUpdateTime
             type: object
         type: object
     served: true

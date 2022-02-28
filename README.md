@@ -1,22 +1,37 @@
 # Github runner autoscale operator
 
-## What is it?
-
-TL; DR
+## What is it? :information_source:
 
 **The main purpose of this project is to create a simple autoscale for self-hosted github runners.**
 
-When we began to use self hosted runners the main problem was how to increase the number of runners when the developers are using the runners at the same time. This operator do this by creating a new replica of the runner when the percentage of idle runners is less than 40% and removing replicas when the percentage of idle runners is more than 80%.
+When we began to use self hosted runners the main problem was how to increase the number of runners when the developers are using the runners at the same time. This operator do this by modifying replicas of the deployment that have the self-hosted runners, when the percentage of idle runners is less than 40% a calculation is made and replicas are set based on the result of this expression: `(Replicas + (Replicas / 2))`, otherside when the percentage of idle runners is more than 80% replicas are set using the expression `(Replicas - (Replicas / 3))`.
 
-This project was inspirated from https://github.com/hurbcom/github-runner-autoscale
+This project was inspirated from https://github.com/hurbcom/github-runner-autoscale.
 
-## Requeriments
+## Requeriments :mag:
 
 * Go 1.17+
 * Make
 * Docker
 
-## Instalation
+## Testing :test_tube:	
+
+To run locally for tests purposes you can follow the steps:
+
+
+Install the CRD:
+
+```
+make install
+```
+
+Run your controller (this will run in the foreground, so switch to a new terminal if you want to leave it running):
+
+```
+make run
+```
+
+## Installation :building_construction:	
 
 To begin the installattion we need to create the image for the operator and push to a repository:
 
@@ -111,6 +126,12 @@ I0227 20:13:23.276073       1 leaderelection.go:258] successfully acquired lease
 1.6459928803479133e+09  INFO    controller.githubrunnerautoscaler       Total runners: 0, busy runners: 0, idle runners: 0, percent idle: NaN   {"reconciler group": "operator.hurb.com", "reconciler kind": "GithubRunnerAutoscaler", "name": "githubrunnerautoscaler-test", "namespace": "default"}
 ```
 
+PS: To uninstall the operator you can use the following command:
+
+```
+$ make undeploy
+```
+
 ## In development :construction::construction_worker:
 TODO list:
 
@@ -119,7 +140,7 @@ TODO list:
 * Create strategies and algorithms to scale up and down.
 
 
-## FAQ's:
+## FAQ's: :question:	
 
 Q: Error: failed to solve with frontend dockerfile.v0 <br>
 A: If you are using docker desktop for mac/windows you need to deactivate the docker buildkit using the command: `$ export DOCKER_BUILDKIT=0 ; export COMPOSE_DOCKER_CLI_BUILD=0`.
