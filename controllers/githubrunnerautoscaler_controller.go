@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
 	"time"
 
@@ -139,12 +140,14 @@ func (r *GithubRunnerAutoscalerReconciler) autoscaleReplicas(ctx context.Context
 		switch {
 		case *deploy.Spec.Replicas <= githubrunner.Spec.MinWorkers:
 			deploy.Spec.Replicas = &githubrunner.Spec.MinWorkers
-		case midIdle < 0.4 && *deploy.Spec.Replicas < githubrunner.Spec.MaxWorkers:
-			replicas := *deploy.Spec.Replicas + int32(1)
-			deploy.Spec.Replicas = &replicas
-		case midIdle > 0.8 && *deploy.Spec.Replicas > githubrunner.Spec.MinWorkers:
-			replicas := *deploy.Spec.Replicas - int32(1)
-			deploy.Spec.Replicas = &replicas
+		case midIdle <= 0.4 && *deploy.Spec.Replicas < githubrunner.Spec.MaxWorkers:
+			replicas := math.Ceil(float64(oldReplicas) + (float64(oldReplicas) / 2))
+			replicasConv := int32(replicas)
+			deploy.Spec.Replicas = &replicasConv
+		case midIdle >= 0.8 && *deploy.Spec.Replicas > githubrunner.Spec.MinWorkers:
+			replicas := math.Ceil(float64(oldReplicas) - (float64(oldReplicas) / 3))
+			replicasConv := int32(replicas)
+			deploy.Spec.Replicas = &replicasConv
 		}
 
 		if *deploy.Spec.Replicas != oldReplicas {
@@ -153,12 +156,14 @@ func (r *GithubRunnerAutoscalerReconciler) autoscaleReplicas(ctx context.Context
 			if err != nil {
 				log.Error(err, "Unable to update Deployment")
 			}
+			time.Sleep(20 * time.Second)
 		}
+
 		select {
 		case <-cctx.Done():
 			return
 		default:
-			time.Sleep(15 * time.Second)
+			time.Sleep(20 * time.Second)
 			continue
 		}
 	}
