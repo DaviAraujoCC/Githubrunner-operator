@@ -6,9 +6,9 @@ TL; DR
 
 **The main purpose of this project is to create a simple autoscale for self-hosted github runners.**
 
-When we began to use self hosted runners the main problem was how to increase the number of runners when the developers are using the runners at the same time. This operator do this by creating a new replica of the runner when the percentage of idle runners is less than 40% and deleting the replica when the percentage of idle runners is more than 80%.
+When we began to use self hosted runners the main problem was how to increase the number of runners when the developers are using the runners at the same time. This operator do this by creating a new replica of the runner when the percentage of idle runners is less than 40% and removing replicas when the percentage of idle runners is more than 80%.
 
-This project was influenced from https://github.com/hurbcom/github-runner-autoscale
+This project was inspirated from https://github.com/hurbcom/github-runner-autoscale
 
 ## Requeriments
 
@@ -50,13 +50,13 @@ metadata:
   name: githubrunnerautoscaler-example // name of the object
 spec:
   deploymentName: runner      // name of the deployment that runs the github runner
+  namespace: default         // namespace where the operator is deployed
   minWorkers:  1             // minimum number of workers
   maxWorkers:  10            // maximum number of workers
-  namespace: default         // namespace where the operator is deployed
   orgName: orgname           // name of the github organization
   githubToken:               // token to access github api and get from endpoint https://api.github.com/orgs/{orgname}/actions/runners
     secretName: github-token  // name of the secret with the token
-    keyRef: token             // key of the token
+    keyRef: token             // secret key where is located the token
 EOF
 ```
 Example of secret object:
