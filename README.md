@@ -8,11 +8,9 @@ TL; DR
 
 When we began to use self hosted runners the main problem was how to increase the number of runners when the developers are using the runners at the same time. This operator do this by creating a new replica of the runner when the percentage of idle runners is less than 40% and deleting the replica when the percentage of idle runners is more than 80%.
 
-This project is a fork from https://github.com/hurbcom/github-runner-autoscale
+This project was influenced from https://github.com/hurbcom/github-runner-autoscale
 
 ## Instalation
-
-We will use our another project with the self host image of github runner in docker (https://github.com/hurbcom/github-runner-image)
 
 To begin the installattion we need to create the image from the operator and push to a repository:
 
@@ -26,7 +24,7 @@ After that you can deploy the operator in your cluster with the following comman
 $ make deploy IMG=<some-registry>/<project-name>:tag
 ```
 
-It will create the service account necessary to run the operator with the rest o CRD's and deployment.
+Deployment, service accounts and CRD's are created automatically.
 
 For default the operator will be deployed in the `githubrunner-operator-system` namespace, but you can change it modifying the `namespace` parameter in <b>config/default/kustomization.yaml</b> file.
 
@@ -50,7 +48,7 @@ spec:
   maxWorkers:  10            // maximum number of workers
   namespace: default         // namespace where the operator is deployed
   orgName: orgname           // name of the github organization
-  githubToken: token         // token to access github
+  githubToken:               // token to access github api and get from endpoint https://api.github.com/orgs/{orgname}/actions/runners
     secretName: github-token  // name of the secret with the token
     keyRef: token             // key of the token
 EOF
@@ -72,6 +70,15 @@ To create the objects:
 ```
 $ kubectl create -f githubrunnerautoscaler-example.yaml
 $ kubectl create -f secret.yaml
+```
+
+```
+$ kubectl get githubrunnerautoscaler, secret
+NAME                                                                   AGE
+githubrunnerautoscaler.operator.hurb.com/githubrunnerautoscaler-test   4h57m
+
+NAME                         TYPE                                  DATA   AGE
+secret/github-token          Opaque                                1      5h7m
 ```
 
 Accessing logs from the controller:
@@ -107,7 +114,7 @@ TODO list:
 
 ## FAQ's:
 
-Q: Error: failed to solve with frontend dockerfile.v0
+Q: Error: failed to solve with frontend dockerfile.v0 <br>
 A: If you are using docker desktop for mac/windows you need to deactivate the docker buildkit using the command: `$ export DOCKER_BUILDKIT=0 ; export COMPOSE_DOCKER_CLI_BUILD=0`.
 
 
