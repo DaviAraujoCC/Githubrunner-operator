@@ -28,7 +28,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -103,12 +102,8 @@ func (r *GithubRunnerAutoscalerReconciler) Reconcile(ctx context.Context, req ct
 		cctx, cancel = context.WithCancel(context.Background())
 	}
 
-	log.Info("Created GithubRunnerAutoscaler for ", "GithubRunnerAutoscaler.Namespace", githubrunner.Namespace, "GithubRunnerAutoscaler.Name", githubrunner.Name)
-
 	go r.autoscaleReplicas(cctx, deployment, githubrunner)
-
-	githubrunner.Status.LastUpdateTime = metav1.Time{Time: time.Now()}
-	r.Update(ctx, githubrunner)
+	log.Info("Created GithubRunnerAutoscaler for ", "GithubRunnerAutoscaler.Namespace", githubrunner.Namespace, "GithubRunnerAutoscaler.Name", githubrunner.Name)
 
 	return ctrl.Result{}, nil
 }
@@ -137,13 +132,11 @@ func (r *GithubRunnerAutoscalerReconciler) autoscaleReplicas(cctx context.Contex
 		log.Info(fmt.Sprintf("Total runners: %d, busy runners: %d, idle runners: %d, percent idle: %f", totalRunners, qntRunnersBusy, idleRunners, percentIdle))
 		midIdle = (midIdle + percentIdle) / 2
 
-		if *deploy.Spec.Replicas < githubrunner.Spec.MinWorkers {
-			deploy.Spec.Replicas = &githubrunner.Spec.MinWorkers
-		}
-
 		replicas := *deploy.Spec.Replicas
 
 		switch {
+		case replicas < githubrunner.Spec.MinWorkers:
+			deploy.Spec.Replicas = &githubrunner.Spec.MinWorkers
 		case midIdle <= 0.4 && *deploy.Spec.Replicas < githubrunner.Spec.MaxWorkers:
 			replicasNew := math.Ceil(float64(replicas) + (float64(replicas) / 2))
 			replicasConv := int32(replicasNew)
@@ -153,7 +146,7 @@ func (r *GithubRunnerAutoscalerReconciler) autoscaleReplicas(cctx context.Contex
 			} else {
 				deploy.Spec.Replicas = &replicasConv
 			}
-		case midIdle >= 0.8 && *deploy.Spec.Replicas > githubrunner.Spec.MinWorkers:
+		case midIdle >= 0.8 && replicas > githubrunner.Spec.MinWorkers:
 			replicasNew := math.Ceil(float64(replicas) - (float64(replicas) / 3))
 			replicasConv := int32(replicasNew)
 			if replicasConv < githubrunner.Spec.MinWorkers {

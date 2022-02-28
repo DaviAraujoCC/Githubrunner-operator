@@ -40,7 +40,6 @@ type GithubTokenSpec struct {
 
 // GithubRunnerAutoscalerStatus defines the observed state of GithubRunnerAutoscaler
 type GithubRunnerAutoscalerStatus struct {
-	LastUpdateTime metav1.Time `json:"lastUpdateTime"`
 }
 
 //+kubebuilder:object:root=true
