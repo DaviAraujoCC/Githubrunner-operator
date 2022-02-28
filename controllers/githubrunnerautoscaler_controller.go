@@ -158,7 +158,7 @@ func (r *GithubRunnerAutoscalerReconciler) autoscaleReplicas(cctx context.Contex
 			replicasConv := int32(replicasNew)
 			if replicasConv < githubrunner.Spec.MinWorkers {
 				log.Info("Desired deployment replicas is less than min workers, setting replicas to min workers.")
-				deploy.Spec.Replicas = &githubrunner.Spec.MaxWorkers
+				deploy.Spec.Replicas = &githubrunner.Spec.MinWorkers
 			} else {
 				deploy.Spec.Replicas = &replicasConv
 			}
