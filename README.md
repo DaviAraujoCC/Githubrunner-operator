@@ -1,10 +1,12 @@
 # Github runner autoscale operator
 
-## What is it? :information_source:
+## About :information_source:
 
 **The main purpose of this project is to create a simple autoscale for self-hosted github runners.**
 
-When we began to use self hosted runners the main problem was how to increase the number of runners when the developers are using the runners at the same time. This operator do this by modifying replicas of the deployment that have the self-hosted runners, when the percentage of idle runners is less than 40% a calculation is made and replicas are set based on the result of this expression: `(Replicas + (Replicas / 2))`, otherside when the percentage of idle runners is more than 80% replicas are set using the expression `(Replicas - (Replicas / 3))`.
+When we began to use self hosted runners the main problem was how to increase the number of runners when the developers are using the runners at the same time. This operator do this by modifying runners replicas value. 
+
+The strategy used is, when the percentage of idle runners is less than 40% a calculation is made and replicas are set based on the result of this expression: `(Replicas + (Replicas / 2))`, otherside when the percentage of idle runners is more than 80%, replicas are set using the expression `(Replicas - (Replicas / 3))`.
 
 This project was inspirated from https://github.com/hurbcom/github-runner-autoscale.
 
