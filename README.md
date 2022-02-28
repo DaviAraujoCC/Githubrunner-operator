@@ -10,6 +10,12 @@ When we began to use self hosted runners the main problem was how to increase th
 
 This project was influenced from https://github.com/hurbcom/github-runner-autoscale
 
+## Requeriments
+
+* Go 1.17
+* Make
+* Docker
+
 ## Instalation
 
 To begin the installattion we need to create the image from the operator and push to a repository:

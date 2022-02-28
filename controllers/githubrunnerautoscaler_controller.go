@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"strings"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -135,28 +136,29 @@ func (r *GithubRunnerAutoscalerReconciler) autoscaleReplicas(ctx context.Context
 		log.Info(fmt.Sprintf("Total runners: %d, busy runners: %d, idle runners: %d, percent idle: %f", totalRunners, qntRunnersBusy, idleRunners, percentIdle))
 		midIdle = (midIdle + percentIdle) / 2
 
-		oldReplicas := *deploy.Spec.Replicas
+		replicas := *deploy.Spec.Replicas
 
 		switch {
 		case *deploy.Spec.Replicas <= githubrunner.Spec.MinWorkers:
 			deploy.Spec.Replicas = &githubrunner.Spec.MinWorkers
 		case midIdle <= 0.4 && *deploy.Spec.Replicas < githubrunner.Spec.MaxWorkers:
-			replicas := math.Ceil(float64(oldReplicas) + (float64(oldReplicas) / 2))
+			replicas := math.Ceil(float64(replicas) + (float64(replicas) / 2))
 			replicasConv := int32(replicas)
 			deploy.Spec.Replicas = &replicasConv
 		case midIdle >= 0.8 && *deploy.Spec.Replicas > githubrunner.Spec.MinWorkers:
-			replicas := math.Ceil(float64(oldReplicas) - (float64(oldReplicas) / 3))
+			replicas := math.Ceil(float64(replicas) - (float64(replicas) / 3))
 			replicasConv := int32(replicas)
 			deploy.Spec.Replicas = &replicasConv
 		}
 
-		if *deploy.Spec.Replicas != oldReplicas {
-			log.Info(fmt.Sprintf("Changing replicas from %d to %d", oldReplicas, *deploy.Spec.Replicas))
+		if *deploy.Spec.Replicas != replicas {
+			log.Info(fmt.Sprintf("Changing replicas from %d to %d", replicas, *deploy.Spec.Replicas))
 			err = r.Update(ctx, deploy)
-			if err != nil {
+			if err != nil && !strings.Contains(err.Error(), "has been modified") {
 				log.Error(err, "Unable to update Deployment")
 			}
-			time.Sleep(20 * time.Second)
+			log.Info("Waiting for replicas to be updated")
+			time.Sleep(time.Minute * 3)
 		}
 
 		select {
