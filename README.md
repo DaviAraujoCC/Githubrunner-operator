@@ -18,7 +18,7 @@ This project was inspirated from https://github.com/hurbcom/github-runner-autosc
 
 ## Instalation
 
-To begin the installattion we need to create the image from the operator and push to a repository:
+To begin the installattion we need to create the image for the operator and push to a repository:
 
 ```
 $ make docker-build docker-push IMG=<some-registry>/<project-name>:tag
