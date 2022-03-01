@@ -4,7 +4,7 @@
 
 **The main purpose of this project is to create a simple autoscale for self-hosted github runners.**
 
-When we began to use self hosted runners the main problem was how to increase the number of runners when the developers are using the runners at the same time. This operator do this by modifying runners replicas value. 
+When we began to use self hosted runners the main problem was how to increase the number of runners when the developers are using it at the same time. This operator do this by modifying runners replicas value according to the usage. 
 
 The strategy used is, when the percentage of idle runners is less than 40% a calculation is made and replicas are set based on the result of this expression: `(Replicas + (Replicas / 2))`, otherside when the percentage of idle runners is more than 80%, replicas are set using the expression `(Replicas - (Replicas / 3))`.
 
@@ -33,7 +33,7 @@ Run your controller (this will run in the foreground, so switch to a new termina
 make run
 ```
 
-## Installation :building_construction:	
+## Installation :hammer_and_wrench:
 
 To begin the installattion we need to create the image for the operator and push to a repository:
 
@@ -68,8 +68,8 @@ metadata:
 spec:
   deploymentName: runner      // name of the deployment that runs the github runner
   namespace: default         // namespace where the operator is deployed
-  minWorkers:  1             // minimum number of workers
-  maxWorkers:  10            // maximum number of workers
+  minWorkers:  1             // minimum number of workers/replicas
+  maxWorkers:  10            // maximum number of workers/replicas
   orgName: orgname           // name of the github organization
   githubToken:               // token to access github api and get from endpoint https://api.github.com/orgs/{orgname}/actions/runners
     secretName: github-token  // name of the secret with the token
