@@ -25,12 +25,25 @@ import (
 
 //Ability to create secret automatically
 type GithubRunnerAutoscalerSpec struct {
-	DeploymentName string           `json:"deploymentName"`
-	Namespace      string           `json:"namespace"`
-	OrgName        string           `json:"orgName"`
-	MinReplicas    int32            `json:"minReplicas"`
-	MaxReplicas    int32            `json:"maxReplicas"`
-	GithubToken    *GithubTokenSpec `json:"githubToken"`
+	TargetDeploymentName string          `json:"targetDeploymentName"`
+	TargetNamespace      string          `json:"targetNamespace"`
+	OrgName              string          `json:"orgName"`
+	MinReplicas          int32           `json:"minReplicas"`
+	MaxReplicas          int32           `json:"maxReplicas"`
+	GithubToken          GithubTokenSpec `json:"githubToken"`
+	Strategy             StrategySpec    `json:"strategy"`
+}
+
+type StrategySpec struct {
+	Type string `json:"type"`
+	//+optional
+	ScaleUpThreshold string `json:"scaleUpThreshold,omitempty"`
+	//+optional
+	ScaleDownThreshold string `json:"scaleDownThreshold,omitempty"`
+	//+optional
+	ScaleUpFactor string `json:"scaleUpFactor,omitempty"`
+	//+optional
+	ScaleDownFactor string `json:"scaleDownFactor,omitempty"`
 }
 
 type GithubTokenSpec struct {

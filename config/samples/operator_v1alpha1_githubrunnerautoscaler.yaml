@@ -3,21 +3,18 @@ kind: GithubRunnerAutoscaler
 metadata:
   name: githubrunnerautoscaler-test
 spec:
-  deploymentName: runner
-  minReplicas: 6
+  targetDeploymentName: runner
+  targetNamespace: default
+  minReplicas: 8
   maxReplicas: 20
-  namespace: default
   orgName: orgname
   githubToken:
     secretName: github-token
     keyRef: token
-
----
-
-apiVersion: v1
-stringData:
-  token: {{ TOKEN }}
-kind: Secret
-metadata:
-  name: github-token
+  strategy:
+    type: "PercentRunnersBusy"
+    scaleUpThreshold: '0.8'
+    scaleDownThreshold: '0.5'
+    scaleUpFactor: '1.5'
+    scaleDownFactor: '0.5'
 

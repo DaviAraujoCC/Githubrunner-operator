@@ -36,8 +36,6 @@ spec:
           spec:
             description: Ability to create secret automatically
             properties:
-              deploymentName:
-                type: string
               githubToken:
                 properties:
                   keyRef:
@@ -54,17 +52,35 @@ spec:
               minReplicas:
                 format: int32
                 type: integer
-              namespace:
-                type: string
               orgName:
                 type: string
+              strategy:
+                properties:
+                  scaleDownFactor:
+                    type: string
+                  scaleDownThreshold:
+                    type: string
+                  scaleUpFactor:
+                    type: string
+                  scaleUpThreshold:
+                    type: string
+                  type:
+                    type: string
+                required:
+                - type
+                type: object
+              targetDeploymentName:
+                type: string
+              targetNamespace:
+                type: string
             required:
-            - deploymentName
             - githubToken
             - maxReplicas
             - minReplicas
-            - namespace
             - orgName
+            - strategy
+            - targetDeploymentName
+            - targetNamespace
             type: object
           status:
             description: GithubRunnerAutoscalerStatus defines the observed state of
