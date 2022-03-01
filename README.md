@@ -137,10 +137,11 @@ $ make undeploy
 ## In development :construction::construction_worker:
 TODO list:
 
-* Make possible to configure the operator to monitor multiple runners at same time with channels since this operator only supports one channel at time.
-* Code cleanup.
-* Create strategies and algorithms to scale up and down.
-
+//checklist
+- [ ] Add a test for the operator
+- [ ] Integrate with github client
+- [ ] Code cleanup
+- [ ] Create strategies and algorithms to scale up and down
 
 ## FAQ's: :question:	
 
