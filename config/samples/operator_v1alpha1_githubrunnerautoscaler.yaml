@@ -4,8 +4,8 @@ metadata:
   name: githubrunnerautoscaler-test
 spec:
   deploymentName: runner
-  minWorkers: 6
-  maxWorkers: 20
+  minReplicas: 6
+  maxReplicas: 20
   namespace: default
   orgName: orgname
   githubToken:

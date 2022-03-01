@@ -68,8 +68,8 @@ metadata:
 spec:
   deploymentName: runner      // name of the deployment that runs the github runner
   namespace: default         // namespace where the operator is deployed
-  minWorkers:  1             // minimum number of workers/replicas
-  maxWorkers:  10            // maximum number of workers/replicas
+  minReplicas:  1             // minimum number of workers/replicas
+  maxReplicas:  10            // maximum number of workers/replicas
   orgName: orgname           // name of the github organization
   githubToken:               // token to access github api and get from endpoint https://api.github.com/orgs/{orgname}/actions/runners
     secretName: github-token  // name of the secret with the token
