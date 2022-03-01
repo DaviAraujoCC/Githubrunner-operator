@@ -64,38 +64,34 @@ $ cat << EOF > githubrunnerautoscaler-example.yaml
 apiVersion: operator.hurb.com/v1alpha1
 kind: GithubRunnerAutoscaler
 metadata:
-  name: githubrunnerautoscaler-example // name of the object
+  name: githubrunnerautoscaler-test
 spec:
-  deploymentName: runner      // name of the deployment that runs the github runner
-  namespace: default         // namespace where the operator is deployed
-  minReplicas:  1             // minimum number of workers/replicas
-  maxReplicas:  10            // maximum number of workers/replicas
-  orgName: orgname           // name of the github organization
-  githubToken:               // token to access github api and get from endpoint https://api.github.com/orgs/{orgname}/actions/runners
-    secretName: github-token  // name of the secret with the token
-    keyRef: token             // secret key where is located the token
+  targetDeploymentName: runner // name of the deployment to scale
+  targetNamespace: default // namespace where the deployment is
+  minReplicas: 8 // Minimum number of replicas
+  maxReplicas: 20 // Maximum number of replicas
+  orgName: orgname // Github organization name
+  githubToken:
+    secretName: github-token // The name of the secret containing the token
+    keyRef: token // The key of the secret containing the token
+  strategy:
+    type: "PercentRunnersBusy" // Strategy type can be PercentRunnersBusy or PercentRunnersIdle(in development)
+    scaleUpThreshold: '0.8' // Scale up threshold indicates which percentage of runners must be busy(or idle) to scale up
+    scaleDownThreshold: '0.5' // Scale down threshold indicates which percentage of runners must be busy(or idle) to scale down
+    scaleUpFactor: '1.5' // Scale up factor indicates the multiplier that will be used to increase the number of replicas
+    scaleDownFactor: '0.5' // Scale down factor indicates the multiplier that will be used to decrease the number of replicas
 EOF
-```
-Example of secret object:
 
-```
-$ cat << EOF > secret.yaml 
-apiVersion: v1
-stringData:
-  token: {{ TOKEN }}
-kind: Secret
-metadata:
-  name: github-token
-EOF
-```
-
-To create the objects:
-```
 $ kubectl create -f githubrunnerautoscaler-example.yaml
-$ kubectl create -f secret.yaml
 ```
 
-Verify the objects:
+Create a secret with the token:
+
+```
+$ kubectl create secret generic github-token --from-literal=token=<token> -n <namespace>
+```
+
+Verify the objects deployed:
 ```
 $ kubectl get githubrunnerautoscaler, secret
 NAME                                                                   AGE
@@ -137,15 +133,16 @@ $ make undeploy
 ## In development :construction::construction_worker:
 TODO list:
 
-//checklist
 - [ ] Add a test for the operator
-- [ ] Integrate with github client
+- [x] Integrate with github client
 - [ ] Code cleanup
-- [ ] Create strategies and algorithms to scale up and down
+- [x] Create strategies and algorithms to scale up and down
 
 ## FAQ's: :question:	
 
 Q: Error: failed to solve with frontend dockerfile.v0 <br>
 A: If you are using docker desktop for mac/windows you need to deactivate the docker buildkit using the command: `$ export DOCKER_BUILDKIT=0 ; export COMPOSE_DOCKER_CLI_BUILD=0`.
 
+Q: What is the cooldown time for the operator to verify replicas <br>
+A: For default the operator will verify the replicas every 5 minutes, but you can change this with the parameter `--sync-period` (value in minutes).
 
