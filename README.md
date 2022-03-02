@@ -74,8 +74,8 @@ spec:
     keyRef: token // The key of the secret containing the token
   strategy:
     type: "PercentRunnersBusy" // Strategy type
-    scaleUpThreshold: '0.8' // Scale up threshold indicates which percentage of runners must be busy(or idle) to scale up
-    scaleDownThreshold: '0.5' // Scale down threshold indicates which percentage of runners must be busy(or idle) to scale down
+    scaleUpThreshold: '0.8' // Scale up threshold indicates which percentage of runners must be busy to scale up
+    scaleDownThreshold: '0.5' // Scale down threshold indicates which percentage of runners must be busy to scale down
     scaleUpFactor: '1.5' // Scale up factor indicates the multiplier that will be used to increase the number of replicas
     scaleDownFactor: '0.5' // Scale down factor indicates the multiplier that will be used to decrease the number of replicas
 EOF
@@ -146,5 +146,5 @@ Q: Error: failed to solve with frontend dockerfile.v0 <br>
 A: If you are using docker desktop for mac/windows you need to deactivate the docker buildkit using the command: `$ export DOCKER_BUILDKIT=0 ; export COMPOSE_DOCKER_CLI_BUILD=0`.
 
 Q: What is the cooldown time for the operator to verify replicas <br>
-A: For default the operator will verify the replicas every 10 minutes, but you can change this with the parameter `--sync-period` (value in minutes).
+A: For default the operator will verify the replicas every 10 minutes, but you can change this behaviour with the parameter `--sync-period` (value in minutes).
 

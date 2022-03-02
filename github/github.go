@@ -7,20 +7,16 @@ import (
 	"golang.org/x/oauth2"
 )
 
-type Config struct {
-	Token string
-}
-
 type Client struct {
 	*github.Client
 	OrgName string
 }
 
-func (c *Config) NewClient(orgName string) (*Client, error) {
+func NewClient(token, orgName string) (*Client, error) {
 
 	ctx := context.Background()
 	ts := oauth2.StaticTokenSource(
-		&oauth2.Token{AccessToken: c.Token},
+		&oauth2.Token{AccessToken: token},
 	)
 	tc := oauth2.NewClient(ctx, ts)
 	client := github.NewClient(tc)

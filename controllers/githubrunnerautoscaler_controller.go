@@ -95,8 +95,7 @@ func (r *GithubRunnerAutoscalerReconciler) Reconcile(ctx context.Context, req ct
 			return ctrl.Result{}, err
 		}
 		orgname := githubrunner.Spec.OrgName
-		ghConf := &gh.Config{Token: string(token)}
-		ghClient, err = ghConf.NewClient(orgname)
+		ghClient, err = gh.NewClient(string(token), orgname)
 		if err != nil {
 			log.Error(err, "Unable to create Github client")
 		}
