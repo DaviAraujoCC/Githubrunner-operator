@@ -128,7 +128,7 @@ PS: To uninstall the operator you can use the following command:
 $ make undeploy
 ```
 
-## Strategies available
+## Strategies:
 
 * `PercentRunnersBusy`: This strategy will scale the number of replicas of a given deployment based on the percentage of busy runners that are running.
 * `PercentRunnersIdle`: This strategy will scale the number of replicas of a given deployment based on the percentage of idle runners that are running. (in development)
