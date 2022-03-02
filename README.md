@@ -147,5 +147,5 @@ Q: Error: failed to solve with frontend dockerfile.v0 <br>
 A: If you are using docker desktop for mac/windows you need to deactivate the docker buildkit using the command: `$ export DOCKER_BUILDKIT=0 ; export COMPOSE_DOCKER_CLI_BUILD=0`.
 
 Q: What is the cooldown time for the operator to verify replicas <br>
-A: For default the operator will verify the replicas every 5 minutes, but you can change this with the parameter `--sync-period` (value in minutes).
+A: For default the operator will verify the replicas every 10 minutes, but you can change this with the parameter `--sync-period` (value in minutes).
 
