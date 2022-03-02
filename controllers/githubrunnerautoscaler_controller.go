@@ -22,6 +22,7 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"time"
 
 	gh "github.com/DaviAraujoCC/k8s-operator-kubebuilder/github"
 	appsv1 "k8s.io/api/apps/v1"
@@ -42,7 +43,8 @@ type GithubRunnerAutoscalerReconciler struct {
 }
 
 var (
-	ghClient *gh.Client
+	ghClient    *gh.Client
+	timeRefresh time.Time
 )
 
 const (
@@ -85,7 +87,8 @@ func (r *GithubRunnerAutoscalerReconciler) Reconcile(ctx context.Context, req ct
 		return ctrl.Result{}, err
 	}
 
-	if ghClient == nil {
+	if ghClient == nil || timeRefresh.Add(1*time.Hour).Before(time.Now()) {
+		timeRefresh = time.Now()
 		token, err := r.getToken(githubrunner)
 		if err != nil {
 			log.Error(err, "Unable to decode token")
@@ -115,36 +118,29 @@ func (r *GithubRunnerAutoscalerReconciler) Reconcile(ctx context.Context, req ct
 func (r *GithubRunnerAutoscalerReconciler) autoscale(ctx context.Context, ghClient *gh.Client, deploy *appsv1.Deployment, githubrunner *operatorv1alpha1.GithubRunnerAutoscaler) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
 
-	var (
-		totalRunners   int
-		qntRunnersBusy int
-		idleRunners    int
-		percentBusy    float64
-	)
-
 	runners, err := ghClient.ListOrganizationRunners()
 	if err != nil {
 		log.Error(err, "Unable to list Github runners")
 		return ctrl.Result{}, err
 	}
-	totalRunners = 0
-	qntRunnersBusy = 0
+	totalRunners := 0
+	qntRunnersBusy := 0
 	for _, runner := range runners {
 		if *runner.Busy {
 			qntRunnersBusy++
 		}
 		totalRunners++
 	}
-
-	percentBusy = float64(qntRunnersBusy) / float64(totalRunners)
+	idleRunners := totalRunners - qntRunnersBusy
+	percentBusy := float64(qntRunnersBusy) / float64(totalRunners)
 	log.Info(fmt.Sprintf("Total runners: %d, busy runners: %d, idle runners: %d, percent busy: %f", totalRunners, qntRunnersBusy, idleRunners, percentBusy))
 
 	replicas := *deploy.Spec.Replicas
 
-	scaleUpThreshold, _ := strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleUpFactor, 8)
-	scaleDownThreshold, _ := strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleDownFactor, 8)
-	scaleUpFactor, _ := strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleUpFactor, 8)
-	scaleDownFactor, _ := strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleDownFactor, 8)
+	scaleUpThreshold, _ := strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleUpFactor, 32)
+	scaleDownThreshold, _ := strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleDownFactor, 32)
+	scaleUpFactor, _ := strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleUpFactor, 32)
+	scaleDownFactor, _ := strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleDownFactor, 32)
 
 	switch {
 	case replicas < githubrunner.Spec.MinReplicas:
@@ -193,16 +189,16 @@ func (r *GithubRunnerAutoscalerReconciler) getToken(githubrunner *operatorv1alph
 }
 
 func setScaleValuesOrDefault(githubrunner *operatorv1alpha1.GithubRunnerAutoscaler) *operatorv1alpha1.GithubRunnerAutoscaler {
-	if _, err := strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleUpThreshold, 8); err != nil || githubrunner.Spec.Strategy.ScaleUpThreshold == "" {
+	if _, err := strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleUpThreshold, 32); err != nil || githubrunner.Spec.Strategy.ScaleUpThreshold == "" {
 		githubrunner.Spec.Strategy.ScaleUpThreshold = defaultScaleUpThreshold
 	}
-	if _, err := strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleDownThreshold, 8); err != nil || githubrunner.Spec.Strategy.ScaleDownThreshold == "" {
+	if _, err := strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleDownThreshold, 32); err != nil || githubrunner.Spec.Strategy.ScaleDownThreshold == "" {
 		githubrunner.Spec.Strategy.ScaleDownThreshold = defaultScaleDownThreshold
 	}
-	if _, err := strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleUpFactor, 8); err != nil || githubrunner.Spec.Strategy.ScaleUpFactor == "" {
+	if _, err := strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleUpFactor, 32); err != nil || githubrunner.Spec.Strategy.ScaleUpFactor == "" {
 		githubrunner.Spec.Strategy.ScaleUpFactor = defaultScaleUpFactor
 	}
-	if _, err := strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleDownFactor, 8); err != nil || githubrunner.Spec.Strategy.ScaleDownFactor == "" {
+	if _, err := strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleDownFactor, 32); err != nil || githubrunner.Spec.Strategy.ScaleDownFactor == "" {
 		githubrunner.Spec.Strategy.ScaleDownFactor = defaultScaleDownFactor
 	}
 	return githubrunner
