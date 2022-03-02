@@ -4,9 +4,7 @@
 
 **The main purpose of this project is to create a simple autoscale for self-hosted github runners.**
 
-When we began to use self hosted runners the main problem was how to increase the number of runners when the developers are using it at the same time. This operator do this by modifying runners replicas value according to the usage. 
-
-The strategy used is, when the percentage of idle runners is less than 40% a calculation is made and replicas are set based on the result of this expression: `(Replicas + (Replicas / 2))`, otherside when the percentage of idle runners is more than 80%, replicas are set using the expression `(Replicas - (Replicas / 3))`.
+When we began to use self hosted runners the main problem was how to increase the number of replicas when the usage was too high and we needed a simple solution to implement this in our current runners deployed in our cluster. This operator do this by modifying runners replicas value according to the usage and strategies. 
 
 This project was inspirated from https://github.com/hurbcom/github-runner-autoscale.
 
@@ -129,6 +127,11 @@ PS: To uninstall the operator you can use the following command:
 ```
 $ make undeploy
 ```
+
+## Strategies available
+
+* `PercentRunnersBusy`: This strategy will scale the number of replicas of a given deployment based on the percentage of busy runners that are running.
+* `PercentRunnersIdle`: This strategy will scale the number of replicas of a given deployment based on the percentage of idle runners that are running. (in development)
 
 ## In development :construction::construction_worker:
 TODO list:
