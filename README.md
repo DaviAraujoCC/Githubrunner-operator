@@ -2,9 +2,9 @@
 
 ## About :information_source:
 
-**The main purpose of this project is to create a simple autoscale for self-hosted github runners.**
+**The main purpose of this project is to only create a simple autoscale for self-hosted github runners.**
 
-When we began to use self hosted runners the main problem was how to increase the number of replicas when the usage was too high and we needed a simple solution to implement this in our current runners deployed in our cluster. This operator do this by modifying runners replicas value according to the usage and strategies. 
+When we began to use self hosted runners the main problem was how to increase the number of replicas when the usage was too high and we needed a simple solution to implement this in our kubernetes cluster. This operator do this by modifying runners replicas value from deployments according to the usage and strategies. 
 
 This project was inspirated from https://github.com/hurbcom/github-runner-autoscale.
 
@@ -73,7 +73,7 @@ spec:
     secretName: github-token // The name of the secret containing the token
     keyRef: token // The key of the secret containing the token
   strategy:
-    type: "PercentRunnersBusy" // Strategy type can be PercentRunnersBusy or PercentRunnersIdle(in development)
+    type: "PercentRunnersBusy" // Strategy type
     scaleUpThreshold: '0.8' // Scale up threshold indicates which percentage of runners must be busy(or idle) to scale up
     scaleDownThreshold: '0.5' // Scale down threshold indicates which percentage of runners must be busy(or idle) to scale down
     scaleUpFactor: '1.5' // Scale up factor indicates the multiplier that will be used to increase the number of replicas
@@ -131,15 +131,14 @@ $ make undeploy
 ## Strategies:
 
 * `PercentRunnersBusy`: This strategy will scale the number of replicas of a given deployment based on the percentage of busy runners that are running.
-* `PercentRunnersIdle`: This strategy will scale the number of replicas of a given deployment based on the percentage of idle runners that are running. (in development)
 
 ## In development :construction::construction_worker:
 TODO list:
 
-- [ ] Add a test for the operator
+- [ ] Add tests for the operator
 - [x] Integrate with github client
-- [ ] Code cleanup
 - [x] Create strategies and algorithms to scale up and down
+- [ ] Configure goreleaser
 
 ## FAQ's: :question:	
 
