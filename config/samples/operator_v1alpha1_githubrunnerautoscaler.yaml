@@ -15,6 +15,6 @@ spec:
     type: "PercentRunnersBusy"
     scaleUpThreshold: '0.8'
     scaleDownThreshold: '0.5'
-    scaleUpFactor: '1.5'
-    scaleDownFactor: '0.5'
+    scaleUpMultiplier: '1.5'
+    scaleDownMultiplier: '0.5'
 

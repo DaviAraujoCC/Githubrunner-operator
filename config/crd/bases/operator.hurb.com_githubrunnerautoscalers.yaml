@@ -56,11 +56,11 @@ spec:
                 type: string
               strategy:
                 properties:
-                  scaleDownFactor:
+                  scaleDownMultiplier:
                     type: string
                   scaleDownThreshold:
                     type: string
-                  scaleUpFactor:
+                  scaleUpMultiplier:
                     type: string
                   scaleUpThreshold:
                     type: string

@@ -41,9 +41,9 @@ type StrategySpec struct {
 	//+optional
 	ScaleDownThreshold string `json:"scaleDownThreshold,omitempty"`
 	//+optional
-	ScaleUpFactor string `json:"scaleUpFactor,omitempty"`
+	ScaleUpMultiplier string `json:"scaleUpMultiplier,omitempty"`
 	//+optional
-	ScaleDownFactor string `json:"scaleDownFactor,omitempty"`
+	ScaleDownMultiplier string `json:"scaleDownMultiplier,omitempty"`
 }
 
 type GithubTokenSpec struct {

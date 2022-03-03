@@ -129,10 +129,10 @@ func (r *GithubRunnerAutoscalerReconciler) autoscale(ctx context.Context, ghClie
 
 	replicas := *deploy.Spec.Replicas
 
-	scaleUpThreshold, _ := strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleUpFactor, 32)
-	scaleDownThreshold, _ := strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleDownFactor, 32)
-	scaleUpFactor, _ := strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleUpFactor, 32)
-	scaleDownFactor, _ := strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleDownFactor, 32)
+	scaleUpThreshold, _ := strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleUpThreshold, 32)
+	scaleDownThreshold, _ := strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleDownThreshold, 32)
+	scaleUpFactor, _ := strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleUpMultiplier, 32)
+	scaleDownFactor, _ := strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleDownMultiplier, 32)
 
 	switch {
 	case replicas < githubrunner.Spec.MinReplicas:
