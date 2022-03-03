@@ -64,20 +64,32 @@ kind: GithubRunnerAutoscaler
 metadata:
   name: githubrunnerautoscaler-test
 spec:
-  targetDeploymentName: runner // name of the deployment to scale
-  targetNamespace: default // namespace where the deployment is
-  minReplicas: 8 // Minimum number of replicas
-  maxReplicas: 20 // Maximum number of replicas
-  orgName: orgname // Github organization name
+  // name of the deployment to scale
+  targetDeploymentName: runner 
+  // namespace where the deployment is
+  targetNamespace: default 
+  // Minimum number of replicas
+  minReplicas: 8 
+  // Maximum number of replicas
+  maxReplicas: 20
+  // Github organization name
+  orgName: orgname
   githubToken:
-    secretName: github-token // The name of the secret containing the token
-    keyRef: token // The key of the secret containing the token
+     // The name of the secret containing the token
+    secretName: github-token
+     // The key of the secret containing the token
+    keyRef: token
   strategy:
-    type: "PercentRunnersBusy" // Strategy type
-    scaleUpThreshold: '0.8' // Scale up threshold indicates which percentage of runners must be busy to scale up
-    scaleDownThreshold: '0.5' // Scale down threshold indicates which percentage of runners must be busy to scale down
-    scaleUpMultiplier: '1.5' // Scale up Multplier indicates the multiplier that will be used to increase the number of replicas
-    scaleDownMultiplier: '0.5' // Scale down Multiplier indicates the multiplier that will be used to decrease the number of replicas
+    // Strategy type
+    type: "PercentRunnersBusy" 
+    // Scale up threshold indicates which percentage of runners must be busy to scale up
+    scaleUpThreshold: '0.8' 
+    // Scale down threshold indicates which percentage of runners must be busy to scale down
+    scaleDownThreshold: '0.5' 
+    // Scale up Multplier indicates the multiplier that will be used to increase the number of replicas
+    scaleUpMultiplier: '1.5' 
+    // Scale down Multiplier indicates the multiplier that will be used to decrease the number of replicas
+    scaleDownMultiplier: '0.5' 
 EOF
 
 $ kubectl create -f githubrunnerautoscaler-example.yaml
