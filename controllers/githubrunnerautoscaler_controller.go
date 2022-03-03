@@ -47,13 +47,6 @@ var (
 	timeRefresh time.Time
 )
 
-const (
-	defaultScaleDownThreshold = "0.4"
-	defaultScaleUpThreshold   = "0.8"
-	defaultScaleUpFactor      = "1.2"
-	defaultScaleDownFactor    = "0.5"
-)
-
 //+kubebuilder:rbac:groups=operator.hurb.com,resources=githubrunnerautoscalers,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=operator.hurb.com,resources=githubrunnerautoscalers/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=operator.hurb.com,resources=githubrunnerautoscalers/finalizers,verbs=update
@@ -105,9 +98,9 @@ func (r *GithubRunnerAutoscalerReconciler) Reconcile(ctx context.Context, req ct
 
 	switch strategy {
 	case "PercentRunnersBusy":
-		githubrunnerNew := setScaleValuesOrDefault(githubrunner)
+		githubrunner.SetScaleValuesOrDefault()
 		log.Info("Created GithubRunnerAutoscaler for ", "GithubRunnerAutoscaler.Namespace", githubrunner.Namespace, "GithubRunnerAutoscaler.Name", githubrunner.Name)
-		return r.autoscale(ctx, ghClient, deployment, githubrunnerNew)
+		return r.autoscale(ctx, ghClient, deployment, githubrunner)
 	}
 
 	log.Info("Strategy not found in object, ignoring GithubRunnerAutoscaler...", "GithubRunnerAutoscaler.Namespace", githubrunner.Namespace, "GithubRunnerAutoscaler.Name", githubrunner.Name)
@@ -147,7 +140,7 @@ func (r *GithubRunnerAutoscalerReconciler) autoscale(ctx context.Context, ghClie
 	case percentBusy >= scaleUpThreshold && *deploy.Spec.Replicas < githubrunner.Spec.MaxReplicas:
 		replicasNew := math.Ceil(float64(replicas) * scaleUpFactor)
 		replicasConv := int32(replicasNew)
-		if replicasConv > githubrunner.Spec.MaxReplicas {
+		if replicasConv < githubrunner.Spec.MaxReplicas {
 			log.Info("Desired deployment replicas is bigger than max workers, setting replicas to max workers.")
 			deploy.Spec.Replicas = &githubrunner.Spec.MaxReplicas
 		} else {
@@ -156,7 +149,7 @@ func (r *GithubRunnerAutoscalerReconciler) autoscale(ctx context.Context, ghClie
 	case percentBusy <= scaleDownThreshold && replicas > githubrunner.Spec.MinReplicas:
 		replicasNew := math.Ceil(float64(replicas) * scaleDownFactor)
 		replicasConv := int32(replicasNew)
-		if replicasConv < githubrunner.Spec.MinReplicas {
+		if replicasConv > githubrunner.Spec.MinReplicas {
 			log.Info("Desired deployment replicas is less than min workers, setting replicas to min workers.")
 			deploy.Spec.Replicas = &githubrunner.Spec.MinReplicas
 		} else {
@@ -185,22 +178,6 @@ func (r *GithubRunnerAutoscalerReconciler) getToken(githubrunner *operatorv1alph
 	tokenBase := secret.Data[githubrunner.Spec.GithubToken.KeyRef]
 
 	return tokenBase, nil
-}
-
-func setScaleValuesOrDefault(githubrunner *operatorv1alpha1.GithubRunnerAutoscaler) *operatorv1alpha1.GithubRunnerAutoscaler {
-	if _, err := strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleUpThreshold, 32); err != nil || githubrunner.Spec.Strategy.ScaleUpThreshold == "" {
-		githubrunner.Spec.Strategy.ScaleUpThreshold = defaultScaleUpThreshold
-	}
-	if _, err := strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleDownThreshold, 32); err != nil || githubrunner.Spec.Strategy.ScaleDownThreshold == "" {
-		githubrunner.Spec.Strategy.ScaleDownThreshold = defaultScaleDownThreshold
-	}
-	if _, err := strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleUpFactor, 32); err != nil || githubrunner.Spec.Strategy.ScaleUpFactor == "" {
-		githubrunner.Spec.Strategy.ScaleUpFactor = defaultScaleUpFactor
-	}
-	if _, err := strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleDownFactor, 32); err != nil || githubrunner.Spec.Strategy.ScaleDownFactor == "" {
-		githubrunner.Spec.Strategy.ScaleDownFactor = defaultScaleDownFactor
-	}
-	return githubrunner
 }
 
 // SetupWithManager sets up the controller with the Manager.
