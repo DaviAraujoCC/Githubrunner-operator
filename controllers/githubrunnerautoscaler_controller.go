@@ -140,7 +140,7 @@ func (r *GithubRunnerAutoscalerReconciler) autoscale(ctx context.Context, ghClie
 	case percentBusy >= scaleUpThreshold && *deploy.Spec.Replicas < githubrunner.Spec.MaxReplicas:
 		replicasNew := math.Ceil(float64(replicas) * scaleUpFactor)
 		replicasConv := int32(replicasNew)
-		if replicasConv < githubrunner.Spec.MaxReplicas {
+		if replicasConv > githubrunner.Spec.MaxReplicas {
 			log.Info("Desired deployment replicas is bigger than max workers, setting replicas to max workers.")
 			deploy.Spec.Replicas = &githubrunner.Spec.MaxReplicas
 		} else {
@@ -149,7 +149,7 @@ func (r *GithubRunnerAutoscalerReconciler) autoscale(ctx context.Context, ghClie
 	case percentBusy <= scaleDownThreshold && replicas > githubrunner.Spec.MinReplicas:
 		replicasNew := math.Ceil(float64(replicas) * scaleDownFactor)
 		replicasConv := int32(replicasNew)
-		if replicasConv > githubrunner.Spec.MinReplicas {
+		if replicasConv < githubrunner.Spec.MinReplicas {
 			log.Info("Desired deployment replicas is less than min workers, setting replicas to min workers.")
 			deploy.Spec.Replicas = &githubrunner.Spec.MinReplicas
 		} else {
