@@ -132,8 +132,8 @@ $ make undeploy
 
 * `PercentRunnersBusy`: This strategy will scale the number of replicas of a given deployment based on the percentage of busy runners that are running.
   * scaleUpThreshold: Scale up threshold indicates which percentage of runners must be busy to scale up (default is '0.8') (Optional)
-  * scaleDownThreshold: Scale down threshold indicates which percentage of runners must be busy to scale down (default is '0.5') (Optional)
-  * scaleUpMultiplier: Scale up multiplier indicates the multiplier that will be used to increase the number of replicas (default is '1.5') (Optional)
+  * scaleDownThreshold: Scale down threshold indicates which percentage of runners must be busy to scale down (default is '0.4') (Optional)
+  * scaleUpMultiplier: Scale up multiplier indicates the multiplier that will be used to increase the number of replicas (default is '1.2') (Optional)
   * scaleDownMultiplier: Scale down multiplier indicates the multiplier that will be used to decrease the number of replicas (default is '0.5') (Optional)
 
 ## In development :construction::construction_worker:
