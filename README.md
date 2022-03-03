@@ -76,7 +76,7 @@ spec:
     type: "PercentRunnersBusy" // Strategy type
     scaleUpThreshold: '0.8' // Scale up threshold indicates which percentage of runners must be busy to scale up
     scaleDownThreshold: '0.5' // Scale down threshold indicates which percentage of runners must be busy to scale down
-    scaleUpMultplier: '1.5' // Scale up Multplier indicates the multiplier that will be used to increase the number of replicas
+    scaleUpMultiplier: '1.5' // Scale up Multplier indicates the multiplier that will be used to increase the number of replicas
     scaleDownMultiplier: '0.5' // Scale down Multiplier indicates the multiplier that will be used to decrease the number of replicas
 EOF
 
