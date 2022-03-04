@@ -65,31 +65,57 @@ metadata:
   name: githubrunnerautoscaler-test
 spec:
   targetSpec:
+
     // name of the deployment to scale
+
     targetDeploymentName: runner 
+
     // namespace where the deployment is located 
+
     targetNamespace: default 
+
     // Minimum number of replicas
+
     minReplicas: 8 
+
     // Maximum number of replicas
+
     maxReplicas: 20
+
   // Github organization name
+
   orgName: orgname
+
   githubToken:
+
      // The name of the secret containing the token
+
     secretName: github-token
+
      // The key of the secret containing the token
+
     keyRef: token
+
   strategy:
+
     // Strategy type
+
     type: "PercentRunnersBusy" 
+
     // Scale up threshold indicates which percentage of runners must be busy to scale up
+
     scaleUpThreshold: '0.8' 
+
     // Scale down threshold indicates which percentage of runners must be busy to scale down
+
     scaleDownThreshold: '0.5' 
+
     // Scale up Multplier indicates the multiplier that will be used to increase the number of replicas
+
     scaleUpMultiplier: '1.5' 
+
     // Scale down Multiplier indicates the multiplier that will be used to decrease the number of replicas
+    
     scaleDownMultiplier: '0.5' 
 EOF
 
