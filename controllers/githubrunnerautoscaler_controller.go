@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"math"
 	"strconv"
-	"strings"
 	"time"
 
 	gh "github.com/DaviAraujoCC/k8s-operator-kubebuilder/github"
@@ -76,7 +75,7 @@ func (r *GithubRunnerAutoscalerReconciler) Reconcile(ctx context.Context, req ct
 			log.Info("Unable to find Deployment object")
 			return ctrl.Result{}, err
 		}
-		log.Error(err, "Unable to read Deployment name")
+		log.Error(err, "Unable to read Deployment object")
 		return ctrl.Result{}, err
 	}
 
@@ -98,76 +97,74 @@ func (r *GithubRunnerAutoscalerReconciler) Reconcile(ctx context.Context, req ct
 
 	switch strategy {
 	case "PercentRunnersBusy":
+
 		githubrunner.SetScaleValuesOrDefault()
-		log.Info("Created GithubRunnerAutoscaler for ", "GithubRunnerAutoscaler.Namespace", githubrunner.Namespace, "GithubRunnerAutoscaler.Name", githubrunner.Name)
-		return r.autoscale(ctx, ghClient, deployment, githubrunner)
+		return func(ghClient *gh.Client, deploy *appsv1.Deployment, githubrunner *operatorv1alpha1.GithubRunnerAutoscaler) (ctrl.Result, error) {
+
+			runners, err := ghClient.ListOrganizationRunners()
+			if err != nil {
+				log.Error(err, "Unable to list Github runners")
+				return ctrl.Result{}, err
+			}
+			totalRunners := 0
+			qntRunnersBusy := 0
+			for _, runner := range runners {
+				if *runner.Busy {
+					qntRunnersBusy++
+				}
+				totalRunners++
+			}
+			idleRunners := totalRunners - qntRunnersBusy
+			percentBusy := float64(qntRunnersBusy) / float64(totalRunners)
+			log.Info(fmt.Sprintf("Total runners: %d, busy runners: %d, idle runners: %d, percent busy: %f", totalRunners, qntRunnersBusy, idleRunners, percentBusy))
+
+			replicas := *deploy.Spec.Replicas
+
+			scaleUpThreshold, _ := strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleUpThreshold, 32)
+			scaleDownThreshold, _ := strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleDownThreshold, 32)
+			scaleUpMultiplier, _ := strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleUpMultiplier, 32)
+			scaleDownMultiplier, _ := strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleDownMultiplier, 32)
+			minReplicas := githubrunner.Spec.TargetSpec.MinReplicas
+			maxReplicas := githubrunner.Spec.TargetSpec.MaxReplicas
+
+			switch {
+			case replicas < minReplicas:
+				log.Info("Deployment have less replicas than min replicas, scaling up...", "Deployment.Namespace", deploy.Namespace, "Deployment.Name", deploy.Name, "minReplicas", minReplicas, "replicas", replicas)
+				deploy.Spec.Replicas = &minReplicas
+			case percentBusy >= scaleUpThreshold && *deploy.Spec.Replicas < maxReplicas:
+				replicasNew := math.Ceil(float64(replicas) * scaleUpMultiplier)
+				replicasConv := int32(replicasNew)
+				if replicasConv > maxReplicas {
+					log.Info("Desired deployment replicas is bigger than max workers, setting replicas to max workers.")
+					deploy.Spec.Replicas = &maxReplicas
+				} else {
+					deploy.Spec.Replicas = &replicasConv
+				}
+			case percentBusy <= scaleDownThreshold && replicas > minReplicas:
+				replicasNew := math.Ceil(float64(replicas) * scaleDownMultiplier)
+				replicasConv := int32(replicasNew)
+				if replicasConv < minReplicas {
+					log.Info("Desired deployment replicas is less than min workers, setting replicas to min workers.")
+					deploy.Spec.Replicas = &minReplicas
+				} else {
+					deploy.Spec.Replicas = &replicasConv
+				}
+			}
+
+			if *deploy.Spec.Replicas != replicas {
+				log.Info(fmt.Sprintf("Changing replicas from %d to %d", replicas, *deploy.Spec.Replicas))
+				err := r.Update(ctx, deploy)
+				if err != nil {
+					log.Error(err, "Unable to update Deployment")
+					return ctrl.Result{}, err
+				}
+			}
+
+			return ctrl.Result{}, nil
+		}(ghClient, deployment, githubrunner)
 	}
 
 	log.Info("Strategy not found in object, ignoring GithubRunnerAutoscaler...", "GithubRunnerAutoscaler.Namespace", githubrunner.Namespace, "GithubRunnerAutoscaler.Name", githubrunner.Name)
-	return ctrl.Result{}, nil
-}
-
-func (r *GithubRunnerAutoscalerReconciler) autoscale(ctx context.Context, ghClient *gh.Client, deploy *appsv1.Deployment, githubrunner *operatorv1alpha1.GithubRunnerAutoscaler) (ctrl.Result, error) {
-	log := log.FromContext(ctx)
-
-	runners, err := ghClient.ListOrganizationRunners()
-	if err != nil {
-		log.Error(err, "Unable to list Github runners")
-		return ctrl.Result{}, err
-	}
-	totalRunners := 0
-	qntRunnersBusy := 0
-	for _, runner := range runners {
-		if *runner.Busy {
-			qntRunnersBusy++
-		}
-		totalRunners++
-	}
-	idleRunners := totalRunners - qntRunnersBusy
-	percentBusy := float64(qntRunnersBusy) / float64(totalRunners)
-	log.Info(fmt.Sprintf("Total runners: %d, busy runners: %d, idle runners: %d, percent busy: %f", totalRunners, qntRunnersBusy, idleRunners, percentBusy))
-
-	replicas := *deploy.Spec.Replicas
-
-	scaleUpThreshold, _ := strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleUpThreshold, 32)
-	scaleDownThreshold, _ := strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleDownThreshold, 32)
-	scaleUpFactor, _ := strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleUpMultiplier, 32)
-	scaleDownFactor, _ := strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleDownMultiplier, 32)
-	minReplicas := githubrunner.Spec.TargetSpec.MinReplicas
-	maxReplicas := githubrunner.Spec.TargetSpec.MaxReplicas
-
-	switch {
-	case replicas < minReplicas:
-		deploy.Spec.Replicas = &minReplicas
-	case percentBusy >= scaleUpThreshold && *deploy.Spec.Replicas < maxReplicas:
-		replicasNew := math.Ceil(float64(replicas) * scaleUpFactor)
-		replicasConv := int32(replicasNew)
-		if replicasConv > maxReplicas {
-			log.Info("Desired deployment replicas is bigger than max workers, setting replicas to max workers.")
-			deploy.Spec.Replicas = &maxReplicas
-		} else {
-			deploy.Spec.Replicas = &replicasConv
-		}
-	case percentBusy <= scaleDownThreshold && replicas > minReplicas:
-		replicasNew := math.Ceil(float64(replicas) * scaleDownFactor)
-		replicasConv := int32(replicasNew)
-		if replicasConv < minReplicas {
-			log.Info("Desired deployment replicas is less than min workers, setting replicas to min workers.")
-			deploy.Spec.Replicas = &minReplicas
-		} else {
-			deploy.Spec.Replicas = &replicasConv
-		}
-	}
-
-	if *deploy.Spec.Replicas != replicas {
-		log.Info(fmt.Sprintf("Changing replicas from %d to %d", replicas, *deploy.Spec.Replicas))
-		err := r.Update(ctx, deploy)
-		if err != nil && !strings.Contains(err.Error(), "has been modified") {
-			log.Error(err, "Unable to update Deployment")
-			return ctrl.Result{}, err
-		}
-	}
-
 	return ctrl.Result{}, nil
 }
 
