@@ -38,9 +38,8 @@ import (
 )
 
 var (
-	scheme     = runtime.NewScheme()
-	setupLog   = ctrl.Log.WithName("setup")
-	syncPeriod time.Duration
+	scheme   = runtime.NewScheme()
+	setupLog = ctrl.Log.WithName("setup")
 )
 
 func init() {
@@ -54,6 +53,7 @@ func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
 	var probeAddr string
+	var syncPeriod time.Duration
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.DurationVar(&syncPeriod, "sync-period", 10*time.Minute, "Determines the frequency at which K8s resources managed by this controller are reconciled.")

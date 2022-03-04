@@ -70,7 +70,7 @@ func (r *GithubRunnerAutoscalerReconciler) Reconcile(ctx context.Context, req ct
 
 	// Check if the deployment already exists
 	deployment := &appsv1.Deployment{}
-	err = r.Get(ctx, client.ObjectKey{Name: githubrunner.Spec.TargetDeploymentName, Namespace: githubrunner.Spec.TargetNamespace}, deployment)
+	err = r.Get(ctx, client.ObjectKey{Name: githubrunner.Spec.TargetSpec.TargetDeploymentName, Namespace: githubrunner.Spec.TargetSpec.TargetNamespace}, deployment)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			log.Info("Unable to find Deployment object")
@@ -133,25 +133,27 @@ func (r *GithubRunnerAutoscalerReconciler) autoscale(ctx context.Context, ghClie
 	scaleDownThreshold, _ := strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleDownThreshold, 32)
 	scaleUpFactor, _ := strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleUpMultiplier, 32)
 	scaleDownFactor, _ := strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleDownMultiplier, 32)
+	minReplicas := githubrunner.Spec.TargetSpec.MinReplicas
+	maxReplicas := githubrunner.Spec.TargetSpec.MaxReplicas
 
 	switch {
-	case replicas < githubrunner.Spec.MinReplicas:
-		deploy.Spec.Replicas = &githubrunner.Spec.MinReplicas
-	case percentBusy >= scaleUpThreshold && *deploy.Spec.Replicas < githubrunner.Spec.MaxReplicas:
+	case replicas < minReplicas:
+		deploy.Spec.Replicas = &minReplicas
+	case percentBusy >= scaleUpThreshold && *deploy.Spec.Replicas < maxReplicas:
 		replicasNew := math.Ceil(float64(replicas) * scaleUpFactor)
 		replicasConv := int32(replicasNew)
-		if replicasConv > githubrunner.Spec.MaxReplicas {
+		if replicasConv > maxReplicas {
 			log.Info("Desired deployment replicas is bigger than max workers, setting replicas to max workers.")
-			deploy.Spec.Replicas = &githubrunner.Spec.MaxReplicas
+			deploy.Spec.Replicas = &maxReplicas
 		} else {
 			deploy.Spec.Replicas = &replicasConv
 		}
-	case percentBusy <= scaleDownThreshold && replicas > githubrunner.Spec.MinReplicas:
+	case percentBusy <= scaleDownThreshold && replicas > minReplicas:
 		replicasNew := math.Ceil(float64(replicas) * scaleDownFactor)
 		replicasConv := int32(replicasNew)
-		if replicasConv < githubrunner.Spec.MinReplicas {
+		if replicasConv < minReplicas {
 			log.Info("Desired deployment replicas is less than min workers, setting replicas to min workers.")
-			deploy.Spec.Replicas = &githubrunner.Spec.MinReplicas
+			deploy.Spec.Replicas = &minReplicas
 		} else {
 			deploy.Spec.Replicas = &replicasConv
 		}
@@ -171,7 +173,7 @@ func (r *GithubRunnerAutoscalerReconciler) autoscale(ctx context.Context, ghClie
 
 func (r *GithubRunnerAutoscalerReconciler) getToken(githubrunner *operatorv1alpha1.GithubRunnerAutoscaler) ([]byte, error) {
 	secret := &corev1.Secret{}
-	err := r.Get(context.Background(), client.ObjectKey{Name: githubrunner.Spec.GithubToken.SecretName, Namespace: githubrunner.Spec.TargetNamespace}, secret)
+	err := r.Get(context.Background(), client.ObjectKey{Name: githubrunner.Spec.GithubToken.SecretName, Namespace: githubrunner.Spec.TargetSpec.TargetNamespace}, secret)
 	if err != nil && errors.IsNotFound(err) {
 		return nil, err
 	}

@@ -46,12 +46,6 @@ spec:
                 - keyRef
                 - secretName
                 type: object
-              maxReplicas:
-                format: int32
-                type: integer
-              minReplicas:
-                format: int32
-                type: integer
               orgName:
                 type: string
               strategy:
@@ -69,18 +63,29 @@ spec:
                 required:
                 - type
                 type: object
-              targetDeploymentName:
-                type: string
-              targetNamespace:
-                type: string
+              targetSpec:
+                properties:
+                  maxReplicas:
+                    format: int32
+                    type: integer
+                  minReplicas:
+                    format: int32
+                    type: integer
+                  targetDeploymentName:
+                    type: string
+                  targetNamespace:
+                    type: string
+                required:
+                - maxReplicas
+                - minReplicas
+                - targetDeploymentName
+                - targetNamespace
+                type: object
             required:
             - githubToken
-            - maxReplicas
-            - minReplicas
             - orgName
             - strategy
-            - targetDeploymentName
-            - targetNamespace
+            - targetSpec
             type: object
           status:
             description: GithubRunnerAutoscalerStatus defines the observed state of
