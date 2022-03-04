@@ -64,14 +64,15 @@ kind: GithubRunnerAutoscaler
 metadata:
   name: githubrunnerautoscaler-test
 spec:
-  // name of the deployment to scale
-  targetDeploymentName: runner 
-  // namespace where the deployment is
-  targetNamespace: default 
-  // Minimum number of replicas
-  minReplicas: 8 
-  // Maximum number of replicas
-  maxReplicas: 20
+  targetSpec:
+    // name of the deployment to scale
+    targetDeploymentName: runner 
+    // namespace where the deployment is located 
+    targetNamespace: default 
+    // Minimum number of replicas
+    minReplicas: 8 
+    // Maximum number of replicas
+    maxReplicas: 20
   // Github organization name
   orgName: orgname
   githubToken:
