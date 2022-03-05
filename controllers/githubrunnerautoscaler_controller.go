@@ -102,21 +102,22 @@ func (r *GithubRunnerAutoscalerReconciler) Reconcile(ctx context.Context, req ct
 		}
 	}
 
+	// Set variables
+	githubrunner.SetScaleValues()
+	scaleUpThreshold, _ = strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleUpThreshold, 32)
+	scaleDownThreshold, _ = strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleDownThreshold, 32)
+	scaleUpMultiplier, _ = strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleUpMultiplier, 32)
+	scaleDownMultiplier, _ = strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleDownMultiplier, 32)
+	minReplicas = githubrunner.Spec.TargetSpec.MinReplicas
+	maxReplicas = githubrunner.Spec.TargetSpec.MaxReplicas
+	replicas = *deployment.Spec.Replicas
+
 	strategy := githubrunner.Spec.Strategy.Type
 
 	switch strategy {
 	case "PercentRunnersBusy":
 
-		return func(ghClient *gh.Client, deploy *appsv1.Deployment, githubrunner *operatorv1alpha1.GithubRunnerAutoscaler) (ctrl.Result, error) {
-			// Set variables
-			githubrunner.SetScaleValues()
-			scaleUpThreshold, _ = strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleUpThreshold, 32)
-			scaleDownThreshold, _ = strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleDownThreshold, 32)
-			scaleUpMultiplier, _ = strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleUpMultiplier, 32)
-			scaleDownMultiplier, _ = strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleDownMultiplier, 32)
-			minReplicas = githubrunner.Spec.TargetSpec.MinReplicas
-			maxReplicas = githubrunner.Spec.TargetSpec.MaxReplicas
-			replicas = *deployment.Spec.Replicas
+		return func() (ctrl.Result, error) {
 
 			runners, err := ghClient.ListOrganizationRunners()
 			if err != nil {
@@ -124,11 +125,11 @@ func (r *GithubRunnerAutoscalerReconciler) Reconcile(ctx context.Context, req ct
 				return ctrl.Result{}, err
 			}
 
-			calculate(runners, githubrunner, deploy, "busy", ctx)
+			calculate(runners, githubrunner, deployment, "busy", ctx)
 
-			if *deploy.Spec.Replicas != replicas {
-				log.Info(fmt.Sprintf("Changing replicas from %d to %d", replicas, *deploy.Spec.Replicas))
-				err := r.Update(ctx, deploy)
+			if *deployment.Spec.Replicas != replicas {
+				log.Info(fmt.Sprintf("Changing replicas from %d to %d", replicas, *deployment.Spec.Replicas))
+				err := r.Update(ctx, deployment)
 				if err != nil {
 					log.Error(err, "Unable to update Deployment")
 					return ctrl.Result{}, err
@@ -136,7 +137,7 @@ func (r *GithubRunnerAutoscalerReconciler) Reconcile(ctx context.Context, req ct
 			}
 
 			return ctrl.Result{}, nil
-		}(ghClient, deployment, githubrunner)
+		}()
 	}
 
 	log.Info("Strategy not found in object, ignoring GithubRunnerAutoscaler...", "GithubRunnerAutoscaler.Namespace", githubrunner.Namespace, "GithubRunnerAutoscaler.Name", githubrunner.Name)
@@ -154,7 +155,7 @@ func (r *GithubRunnerAutoscalerReconciler) getToken(githubrunner *operatorv1alph
 	return tokenBase, nil
 }
 
-func calculate(runners []*github.Runner, githubrunner *operatorv1alpha1.GithubRunnerAutoscaler, deploy *appsv1.Deployment, t string, ctx context.Context) {
+func calculate(runners []*github.Runner, githubrunner *operatorv1alpha1.GithubRunnerAutoscaler, deployment *appsv1.Deployment, t string, ctx context.Context) {
 	log := log.FromContext(ctx)
 
 	switch t {
@@ -173,23 +174,23 @@ func calculate(runners []*github.Runner, githubrunner *operatorv1alpha1.GithubRu
 
 		switch {
 		case replicas < minReplicas:
-			log.Info("Deployment have less replicas than min replicas, scaling up...", "Deployment.Namespace", deploy.Namespace, "Deployment.Name", deploy.Name, "minReplicas", minReplicas, "replicas", replicas)
-			deploy.Spec.Replicas = &minReplicas
-		case percentBusy >= scaleUpThreshold && *deploy.Spec.Replicas < maxReplicas:
+			log.Info("Deployment have less replicas than min replicas, scaling up...", "Deployment.Namespace", deployment.Namespace, "Deployment.Name", deployment.Name, "minReplicas", minReplicas, "replicas", replicas)
+			deployment.Spec.Replicas = &minReplicas
+		case percentBusy >= scaleUpThreshold && *deployment.Spec.Replicas < maxReplicas:
 			replicasNew := int32(math.Ceil(float64(replicas) * scaleUpMultiplier))
 			if replicasNew > maxReplicas {
 				log.Info("Desired deployment replicas (autoscale) is bigger than max workers, setting replicas to max workers.")
-				deploy.Spec.Replicas = &maxReplicas
+				deployment.Spec.Replicas = &maxReplicas
 			} else {
-				deploy.Spec.Replicas = &replicasNew
+				deployment.Spec.Replicas = &replicasNew
 			}
 		case percentBusy <= scaleDownThreshold && replicas > minReplicas:
 			replicasNew := int32(math.Ceil(float64(replicas) * scaleDownMultiplier))
 			if replicasNew < minReplicas {
 				log.Info("Desired deployment replicas (autoscale) is less than min workers, setting replicas to min workers.")
-				deploy.Spec.Replicas = &minReplicas
+				deployment.Spec.Replicas = &minReplicas
 			} else {
-				deploy.Spec.Replicas = &replicasNew
+				deployment.Spec.Replicas = &replicasNew
 			}
 		}
 	}
