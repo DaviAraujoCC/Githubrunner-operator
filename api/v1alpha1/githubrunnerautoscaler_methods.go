@@ -9,7 +9,7 @@ const (
 	defaultScaleDownMultiplier = "0.5"
 )
 
-func (gr *GithubRunnerAutoscaler) SetScaleValuesOrDefault() {
+func (gr *GithubRunnerAutoscaler) SetScaleValues() {
 	if _, err := strconv.ParseFloat(gr.Spec.Strategy.ScaleUpThreshold, 32); err != nil || gr.Spec.Strategy.ScaleUpThreshold == "" {
 		gr.Spec.Strategy.ScaleUpThreshold = defaultScaleUpThreshold
 	}
