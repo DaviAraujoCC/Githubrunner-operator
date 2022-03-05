@@ -103,14 +103,10 @@ func (r *GithubRunnerAutoscalerReconciler) Reconcile(ctx context.Context, req ct
 		}
 	}
 
-	// Set variables
-	githubrunner.SetScaleValues()
-	scaleUpThreshold, _ = strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleUpThreshold, 32)
-	scaleDownThreshold, _ = strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleDownThreshold, 32)
-	scaleUpMultiplier, _ = strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleUpMultiplier, 32)
-	scaleDownMultiplier, _ = strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleDownMultiplier, 32)
-	minReplicas = githubrunner.Spec.TargetSpec.MinReplicas
-	maxReplicas = githubrunner.Spec.TargetSpec.MaxReplicas
+	// Validate values passed by user
+	githubrunner.ValidateValues()
+	setScaleValues(githubrunner)
+
 	replicas = *deployment.Spec.Replicas
 
 	strategy := githubrunner.Spec.Strategy.Type
@@ -196,6 +192,15 @@ func calculate(runners []*github.Runner, githubrunner *operatorv1alpha1.GithubRu
 			}
 		}
 	}
+}
+
+func setScaleValues(githubrunner *operatorv1alpha1.GithubRunnerAutoscaler) {
+	scaleUpThreshold, _ = strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleUpThreshold, 32)
+	scaleDownThreshold, _ = strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleDownThreshold, 32)
+	scaleUpMultiplier, _ = strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleUpMultiplier, 32)
+	scaleDownMultiplier, _ = strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleDownMultiplier, 32)
+	minReplicas = githubrunner.Spec.TargetSpec.MinReplicas
+	maxReplicas = githubrunner.Spec.TargetSpec.MaxReplicas
 }
 
 // SetupWithManager sets up the controller with the Manager.
