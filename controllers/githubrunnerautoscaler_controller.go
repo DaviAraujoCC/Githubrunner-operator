@@ -88,6 +88,7 @@ func (r *GithubRunnerAutoscalerReconciler) Reconcile(ctx context.Context, req ct
 		return ctrl.Result{}, err
 	}
 
+	// TODO: Create a new way to check cache from github client
 	if ghClient == nil || timeRefresh.Add(1*time.Hour).Before(time.Now()) {
 		timeRefresh = time.Now()
 		token, err := r.getToken(githubrunner)
@@ -125,6 +126,7 @@ func (r *GithubRunnerAutoscalerReconciler) Reconcile(ctx context.Context, req ct
 				return ctrl.Result{}, err
 			}
 
+			// calculate the number of busy runners and set deployment replicas if necessary
 			calculate(runners, githubrunner, deployment, "busy", ctx)
 
 			if *deployment.Spec.Replicas != replicas {
