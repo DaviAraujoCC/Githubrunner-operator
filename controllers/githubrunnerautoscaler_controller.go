@@ -102,22 +102,21 @@ func (r *GithubRunnerAutoscalerReconciler) Reconcile(ctx context.Context, req ct
 		}
 	}
 
-	// Set variables
-	githubrunner.SetScaleValues()
-	scaleUpThreshold, _ = strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleUpThreshold, 32)
-	scaleDownThreshold, _ = strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleDownThreshold, 32)
-	scaleUpMultiplier, _ = strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleUpMultiplier, 32)
-	scaleDownMultiplier, _ = strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleDownMultiplier, 32)
-	minReplicas = githubrunner.Spec.TargetSpec.MinReplicas
-	maxReplicas = githubrunner.Spec.TargetSpec.MaxReplicas
-	replicas = *deployment.Spec.Replicas
-
 	strategy := githubrunner.Spec.Strategy.Type
 
 	switch strategy {
 	case "PercentRunnersBusy":
 
 		return func(ghClient *gh.Client, deploy *appsv1.Deployment, githubrunner *operatorv1alpha1.GithubRunnerAutoscaler) (ctrl.Result, error) {
+			// Set variables
+			githubrunner.SetScaleValues()
+			scaleUpThreshold, _ = strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleUpThreshold, 32)
+			scaleDownThreshold, _ = strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleDownThreshold, 32)
+			scaleUpMultiplier, _ = strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleUpMultiplier, 32)
+			scaleDownMultiplier, _ = strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleDownMultiplier, 32)
+			minReplicas = githubrunner.Spec.TargetSpec.MinReplicas
+			maxReplicas = githubrunner.Spec.TargetSpec.MaxReplicas
+			replicas = *deployment.Spec.Replicas
 
 			runners, err := ghClient.ListOrganizationRunners()
 			if err != nil {
