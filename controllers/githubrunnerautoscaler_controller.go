@@ -113,7 +113,7 @@ func (r *GithubRunnerAutoscalerReconciler) Reconcile(ctx context.Context, req ct
 			metrics.validateAndSetValues(githubrunner, deployment)
 
 			// calculate the number of busy runners and set deployment replicas if necessary
-			metrics.calculate(runners, githubrunner, deployment, "busy")
+			metrics.calculate(runners, deployment, "busy")
 
 			if *deployment.Spec.Replicas != metrics.CurrentReplicas {
 				log.Info(fmt.Sprintf("Changing replicas from %d to %d", metrics.CurrentReplicas, *deployment.Spec.Replicas))
@@ -186,7 +186,7 @@ func (metrics *MetricsValues) validateAndSetValues(githubrunner *operatorv1alpha
 	metrics.ScaleDownThreshold = scaleDownThreshold
 }
 
-func (metrics *MetricsValues) calculate(runners []*github.Runner, githubrunner *operatorv1alpha1.GithubRunnerAutoscaler, deployment *appsv1.Deployment, t string) {
+func (metrics *MetricsValues) calculate(runners []*github.Runner, deployment *appsv1.Deployment, t string) {
 	log := log.FromContext(context.Background())
 
 	switch t {
