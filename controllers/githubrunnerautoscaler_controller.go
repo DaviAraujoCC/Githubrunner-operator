@@ -109,7 +109,7 @@ func (r *GithubRunnerAutoscalerReconciler) Reconcile(ctx context.Context, req ct
 			}
 
 			// Validate values passed by user
-			metrics := new(MetricValues)
+			metrics := new(MetricsValues)
 			metrics.validateAndSetValues(githubrunner, deployment)
 
 			// calculate the number of busy runners and set deployment replicas if necessary
@@ -132,7 +132,61 @@ func (r *GithubRunnerAutoscalerReconciler) Reconcile(ctx context.Context, req ct
 	return ctrl.Result{}, nil
 }
 
-func (metrics *MetricValues) calculate(runners []*github.Runner, githubrunner *operatorv1alpha1.GithubRunnerAutoscaler, deployment *appsv1.Deployment, t string) {
+const (
+	defaultScaleDownThreshold  = "0.4"
+	defaultScaleUpThreshold    = "0.8"
+	defaultScaleUpMultiplier   = "1.2"
+	defaultScaleDownMultiplier = "0.5"
+)
+
+type MetricsValues struct {
+	CurrentReplicas     int32
+	MinReplicas         int32
+	MaxReplicas         int32
+	ScaleUpMultiplier   float64
+	ScaleDownMultiplier float64
+	ScaleUpThreshold    float64
+	ScaleDownThreshold  float64
+}
+
+func (metrics *MetricsValues) validateAndSetValues(githubrunner *operatorv1alpha1.GithubRunnerAutoscaler, deployment *appsv1.Deployment) {
+
+	log := log.FromContext(context.Background())
+
+	scaleUpThreshold, err := strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleUpThreshold, 32)
+	if err != nil || githubrunner.Spec.Strategy.ScaleUpThreshold == "" {
+		log.Info("ScaleUpThreshold is not a valid float, using default value")
+		githubrunner.Spec.Strategy.ScaleUpThreshold = defaultScaleUpThreshold
+	}
+	scaleDownThreshold, err := strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleDownThreshold, 32)
+	if err != nil || githubrunner.Spec.Strategy.ScaleDownThreshold == "" {
+		log.Info("ScaleDownThreshold is not a valid float, using default value")
+		githubrunner.Spec.Strategy.ScaleDownThreshold = defaultScaleDownThreshold
+	}
+	scaleUpMultiplier, err := strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleUpMultiplier, 32)
+	if err != nil || githubrunner.Spec.Strategy.ScaleUpMultiplier == "" {
+		log.Info("ScaleUpMultiplier is not a valid float, using default value")
+		githubrunner.Spec.Strategy.ScaleUpMultiplier = defaultScaleUpMultiplier
+	}
+	scaleDownMultiplier, err := strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleDownMultiplier, 32)
+	if err != nil || githubrunner.Spec.Strategy.ScaleDownMultiplier == "" {
+		log.Info("ScaleDownMultiplier is not a valid float, using default value")
+		githubrunner.Spec.Strategy.ScaleDownMultiplier = defaultScaleDownMultiplier
+	}
+
+	minReplicas := githubrunner.Spec.TargetSpec.MinReplicas
+	maxReplicas := githubrunner.Spec.TargetSpec.MaxReplicas
+
+	metrics.CurrentReplicas = *deployment.Spec.Replicas
+	metrics.MinReplicas = minReplicas
+	metrics.MaxReplicas = maxReplicas
+	metrics.ScaleUpMultiplier = scaleUpMultiplier
+	metrics.ScaleDownMultiplier = scaleDownMultiplier
+	metrics.ScaleUpThreshold = scaleUpThreshold
+	metrics.ScaleDownThreshold = scaleDownThreshold
+}
+
+func (metrics *MetricsValues) calculate(runners []*github.Runner, githubrunner *operatorv1alpha1.GithubRunnerAutoscaler, deployment *appsv1.Deployment, t string) {
 	log := log.FromContext(context.Background())
 
 	switch t {
@@ -182,60 +236,6 @@ func (r *GithubRunnerAutoscalerReconciler) getToken(githubrunner *operatorv1alph
 	tokenBase := secret.Data[githubrunner.Spec.GithubToken.KeyRef]
 
 	return tokenBase, nil
-}
-
-const (
-	defaultScaleDownThreshold  = "0.4"
-	defaultScaleUpThreshold    = "0.8"
-	defaultScaleUpMultiplier   = "1.2"
-	defaultScaleDownMultiplier = "0.5"
-)
-
-type MetricValues struct {
-	CurrentReplicas     int32
-	MinReplicas         int32
-	MaxReplicas         int32
-	ScaleUpMultiplier   float64
-	ScaleDownMultiplier float64
-	ScaleUpThreshold    float64
-	ScaleDownThreshold  float64
-}
-
-func (metrics *MetricValues) validateAndSetValues(githubrunner *operatorv1alpha1.GithubRunnerAutoscaler, deployment *appsv1.Deployment) {
-
-	log := log.FromContext(context.Background())
-
-	scaleUpThreshold, err := strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleUpThreshold, 32)
-	if err != nil || githubrunner.Spec.Strategy.ScaleUpThreshold == "" {
-		log.Info("ScaleUpThreshold is not a valid float, using default value")
-		githubrunner.Spec.Strategy.ScaleUpThreshold = defaultScaleUpThreshold
-	}
-	scaleDownThreshold, err := strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleDownThreshold, 32)
-	if err != nil || githubrunner.Spec.Strategy.ScaleDownThreshold == "" {
-		log.Info("ScaleDownThreshold is not a valid float, using default value")
-		githubrunner.Spec.Strategy.ScaleDownThreshold = defaultScaleDownThreshold
-	}
-	scaleUpMultiplier, err := strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleUpMultiplier, 32)
-	if err != nil || githubrunner.Spec.Strategy.ScaleUpMultiplier == "" {
-		log.Info("ScaleUpMultiplier is not a valid float, using default value")
-		githubrunner.Spec.Strategy.ScaleUpMultiplier = defaultScaleUpMultiplier
-	}
-	scaleDownMultiplier, err := strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleDownMultiplier, 32)
-	if err != nil || githubrunner.Spec.Strategy.ScaleDownMultiplier == "" {
-		log.Info("ScaleDownMultiplier is not a valid float, using default value")
-		githubrunner.Spec.Strategy.ScaleDownMultiplier = defaultScaleDownMultiplier
-	}
-
-	minReplicas := githubrunner.Spec.TargetSpec.MinReplicas
-	maxReplicas := githubrunner.Spec.TargetSpec.MaxReplicas
-
-	metrics.CurrentReplicas = *deployment.Spec.Replicas
-	metrics.MinReplicas = minReplicas
-	metrics.MaxReplicas = maxReplicas
-	metrics.ScaleUpMultiplier = scaleUpMultiplier
-	metrics.ScaleDownMultiplier = scaleDownMultiplier
-	metrics.ScaleUpThreshold = scaleUpThreshold
-	metrics.ScaleDownThreshold = scaleDownThreshold
 }
 
 // SetupWithManager sets up the controller with the Manager.
