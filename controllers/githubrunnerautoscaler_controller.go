@@ -123,7 +123,7 @@ func (r *GithubRunnerAutoscalerReconciler) Reconcile(ctx context.Context, req ct
 			}
 
 			// calculate the number of busy runners and set deployment replicas if necessary
-			calculate(runners, githubrunner, deployment, "busy", ctx)
+			calculate(runners, githubrunner, deployment, "busy")
 
 			if *deployment.Spec.Replicas != replicas {
 				log.Info(fmt.Sprintf("Changing replicas from %d to %d", replicas, *deployment.Spec.Replicas))
@@ -153,8 +153,8 @@ func (r *GithubRunnerAutoscalerReconciler) getToken(githubrunner *operatorv1alph
 	return tokenBase, nil
 }
 
-func calculate(runners []*github.Runner, githubrunner *operatorv1alpha1.GithubRunnerAutoscaler, deployment *appsv1.Deployment, t string, ctx context.Context) {
-	log := log.FromContext(ctx)
+func calculate(runners []*github.Runner, githubrunner *operatorv1alpha1.GithubRunnerAutoscaler, deployment *appsv1.Deployment, t string) {
+	log := log.FromContext(context.Background())
 
 	switch t {
 	case "busy":
