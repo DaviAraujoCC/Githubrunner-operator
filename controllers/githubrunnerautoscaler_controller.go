@@ -45,14 +45,6 @@ type GithubRunnerAutoscalerReconciler struct {
 var (
 	ghClient    *gh.Client
 	timeRefresh time.Time
-
-	scaleUpThreshold    float64
-	scaleDownThreshold  float64
-	scaleUpMultiplier   float64
-	scaleDownMultiplier float64
-	minReplicas         int32
-	maxReplicas         int32
-	replicas            int32
 )
 
 //+kubebuilder:rbac:groups=operator.hurb.com,resources=githubrunnerautoscalers,verbs=get;list;watch;create;update;patch;delete
@@ -103,12 +95,6 @@ func (r *GithubRunnerAutoscalerReconciler) Reconcile(ctx context.Context, req ct
 		}
 	}
 
-	// Validate values passed by user
-	githubrunner.ValidateValues()
-	setScaleValues(githubrunner)
-
-	replicas = *deployment.Spec.Replicas
-
 	strategy := githubrunner.Spec.Strategy.Type
 
 	switch strategy {
@@ -122,11 +108,15 @@ func (r *GithubRunnerAutoscalerReconciler) Reconcile(ctx context.Context, req ct
 				return ctrl.Result{}, err
 			}
 
-			// calculate the number of busy runners and set deployment replicas if necessary
-			calculate(runners, githubrunner, deployment, "busy")
+			// Validate values passed by user
+			metrics := new(MetricValues)
+			metrics.validateAndSetValues(githubrunner, deployment)
 
-			if *deployment.Spec.Replicas != replicas {
-				log.Info(fmt.Sprintf("Changing replicas from %d to %d", replicas, *deployment.Spec.Replicas))
+			// calculate the number of busy runners and set deployment replicas if necessary
+			metrics.calculate(runners, githubrunner, deployment, "busy")
+
+			if *deployment.Spec.Replicas != metrics.CurrentReplicas {
+				log.Info(fmt.Sprintf("Changing replicas from %d to %d", metrics.CurrentReplicas, *deployment.Spec.Replicas))
 				err := r.Update(ctx, deployment)
 				if err != nil {
 					log.Error(err, "Unable to update Deployment")
@@ -142,18 +132,7 @@ func (r *GithubRunnerAutoscalerReconciler) Reconcile(ctx context.Context, req ct
 	return ctrl.Result{}, nil
 }
 
-func (r *GithubRunnerAutoscalerReconciler) getToken(githubrunner *operatorv1alpha1.GithubRunnerAutoscaler) ([]byte, error) {
-	secret := &corev1.Secret{}
-	err := r.Get(context.Background(), client.ObjectKey{Name: githubrunner.Spec.GithubToken.SecretName, Namespace: githubrunner.Spec.TargetSpec.TargetNamespace}, secret)
-	if err != nil && errors.IsNotFound(err) {
-		return nil, err
-	}
-	tokenBase := secret.Data[githubrunner.Spec.GithubToken.KeyRef]
-
-	return tokenBase, nil
-}
-
-func calculate(runners []*github.Runner, githubrunner *operatorv1alpha1.GithubRunnerAutoscaler, deployment *appsv1.Deployment, t string) {
+func (metrics *MetricValues) calculate(runners []*github.Runner, githubrunner *operatorv1alpha1.GithubRunnerAutoscaler, deployment *appsv1.Deployment, t string) {
 	log := log.FromContext(context.Background())
 
 	switch t {
@@ -171,22 +150,22 @@ func calculate(runners []*github.Runner, githubrunner *operatorv1alpha1.GithubRu
 		log.Info(fmt.Sprintf("Total runners: %d, busy runners: %d, idle runners: %d, percent busy: %f", totalRunners, qntRunnersBusy, idleRunners, percentBusy))
 
 		switch {
-		case replicas < minReplicas:
-			log.Info("Deployment have less replicas than min replicas, scaling up...", "Deployment.Namespace", deployment.Namespace, "Deployment.Name", deployment.Name, "minReplicas", minReplicas, "replicas", replicas)
-			deployment.Spec.Replicas = &minReplicas
-		case percentBusy >= scaleUpThreshold && *deployment.Spec.Replicas < maxReplicas:
-			replicasNew := int32(math.Ceil(float64(replicas) * scaleUpMultiplier))
-			if replicasNew > maxReplicas {
+		case metrics.CurrentReplicas < metrics.MinReplicas:
+			log.Info("Deployment have less replicas than min replicas, scaling up...", "Deployment.Namespace", deployment.Namespace, "Deployment.Name", deployment.Name, "minReplicas", metrics.MinReplicas, "replicas", metrics.CurrentReplicas)
+			deployment.Spec.Replicas = &metrics.MinReplicas
+		case percentBusy >= metrics.ScaleUpThreshold && metrics.CurrentReplicas < metrics.MaxReplicas:
+			replicasNew := int32(math.Ceil(float64(metrics.CurrentReplicas) * metrics.ScaleUpMultiplier))
+			if replicasNew > metrics.MaxReplicas {
 				log.Info("Desired deployment replicas (autoscale) is bigger than max workers, setting replicas to max workers.")
-				deployment.Spec.Replicas = &maxReplicas
+				deployment.Spec.Replicas = &metrics.MaxReplicas
 			} else {
 				deployment.Spec.Replicas = &replicasNew
 			}
-		case percentBusy <= scaleDownThreshold && replicas > minReplicas:
-			replicasNew := int32(math.Ceil(float64(replicas) * scaleDownMultiplier))
-			if replicasNew < minReplicas {
+		case percentBusy <= metrics.ScaleDownThreshold && metrics.CurrentReplicas > metrics.MinReplicas:
+			replicasNew := int32(math.Ceil(float64(metrics.CurrentReplicas) * metrics.ScaleDownMultiplier))
+			if replicasNew < metrics.MinReplicas {
 				log.Info("Desired deployment replicas (autoscale) is less than min workers, setting replicas to min workers.")
-				deployment.Spec.Replicas = &minReplicas
+				deployment.Spec.Replicas = &metrics.MinReplicas
 			} else {
 				deployment.Spec.Replicas = &replicasNew
 			}
@@ -194,13 +173,69 @@ func calculate(runners []*github.Runner, githubrunner *operatorv1alpha1.GithubRu
 	}
 }
 
-func setScaleValues(githubrunner *operatorv1alpha1.GithubRunnerAutoscaler) {
-	scaleUpThreshold, _ = strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleUpThreshold, 32)
-	scaleDownThreshold, _ = strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleDownThreshold, 32)
-	scaleUpMultiplier, _ = strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleUpMultiplier, 32)
-	scaleDownMultiplier, _ = strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleDownMultiplier, 32)
-	minReplicas = githubrunner.Spec.TargetSpec.MinReplicas
-	maxReplicas = githubrunner.Spec.TargetSpec.MaxReplicas
+func (r *GithubRunnerAutoscalerReconciler) getToken(githubrunner *operatorv1alpha1.GithubRunnerAutoscaler) ([]byte, error) {
+	secret := &corev1.Secret{}
+	err := r.Get(context.Background(), client.ObjectKey{Name: githubrunner.Spec.GithubToken.SecretName, Namespace: githubrunner.Spec.TargetSpec.TargetNamespace}, secret)
+	if err != nil && errors.IsNotFound(err) {
+		return nil, err
+	}
+	tokenBase := secret.Data[githubrunner.Spec.GithubToken.KeyRef]
+
+	return tokenBase, nil
+}
+
+const (
+	defaultScaleDownThreshold  = "0.4"
+	defaultScaleUpThreshold    = "0.8"
+	defaultScaleUpMultiplier   = "1.2"
+	defaultScaleDownMultiplier = "0.5"
+)
+
+type MetricValues struct {
+	CurrentReplicas     int32
+	MinReplicas         int32
+	MaxReplicas         int32
+	ScaleUpMultiplier   float64
+	ScaleDownMultiplier float64
+	ScaleUpThreshold    float64
+	ScaleDownThreshold  float64
+}
+
+func (metrics *MetricValues) validateAndSetValues(githubrunner *operatorv1alpha1.GithubRunnerAutoscaler, deployment *appsv1.Deployment) {
+
+	log := log.FromContext(context.Background())
+
+	scaleUpThreshold, err := strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleUpThreshold, 32)
+	if err != nil || githubrunner.Spec.Strategy.ScaleUpThreshold == "" {
+		log.Info("ScaleUpThreshold is not a valid float, using default value")
+		githubrunner.Spec.Strategy.ScaleUpThreshold = defaultScaleUpThreshold
+	}
+	scaleDownThreshold, err := strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleDownThreshold, 32)
+	if err != nil || githubrunner.Spec.Strategy.ScaleDownThreshold == "" {
+		log.Info("ScaleDownThreshold is not a valid float, using default value")
+		githubrunner.Spec.Strategy.ScaleDownThreshold = defaultScaleDownThreshold
+	}
+	scaleUpMultiplier, err := strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleUpMultiplier, 32)
+	if err != nil || githubrunner.Spec.Strategy.ScaleUpMultiplier == "" {
+		log.Info("ScaleUpMultiplier is not a valid float, using default value")
+		githubrunner.Spec.Strategy.ScaleUpMultiplier = defaultScaleUpMultiplier
+	}
+	scaleDownMultiplier, err := strconv.ParseFloat(githubrunner.Spec.Strategy.ScaleDownMultiplier, 32)
+	if err != nil || githubrunner.Spec.Strategy.ScaleDownMultiplier == "" {
+		log.Info("ScaleDownMultiplier is not a valid float, using default value")
+		githubrunner.Spec.Strategy.ScaleDownMultiplier = defaultScaleDownMultiplier
+	}
+
+	minReplicas := githubrunner.Spec.TargetSpec.MinReplicas
+	maxReplicas := githubrunner.Spec.TargetSpec.MaxReplicas
+
+	metrics.CurrentReplicas = *deployment.Spec.Replicas
+	metrics.MinReplicas = minReplicas
+	metrics.MaxReplicas = maxReplicas
+	metrics.ScaleUpMultiplier = scaleUpMultiplier
+	metrics.ScaleDownMultiplier = scaleDownMultiplier
+	metrics.ScaleUpThreshold = scaleUpThreshold
+	metrics.ScaleDownThreshold = scaleDownThreshold
 }
 
 // SetupWithManager sets up the controller with the Manager.
