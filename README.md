@@ -169,7 +169,6 @@ TODO list:
 - [ ] Add tests for the operator
 - [x] Integrate with github client
 - [x] Create strategies and algorithms to scale up and down
-- [ ] Configure goreleaser
 
 ## FAQ's: :question:	
 
